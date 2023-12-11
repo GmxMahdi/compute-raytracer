@@ -1,284 +1,191 @@
-import vertShaderCode from './shaders/triangle.vert.wgsl?raw';
-import fragShaderCode from './shaders/triangle.frag.wgsl?raw';
+import shader from "./shaders/shader.wgsl?raw";
+import { Material } from "./material";
+import { TriangleMesh } from "./triangle-mesh";
+import {mat4} from 'gl-matrix';
 
-// 📈 Position Vertex Buffer Data
-const positions = new Float32Array([
-    1.0, -1.0, 0.0, 
-    -1.0, -1.0, 0.0, 
-    0.0, 1.0, 0.0
-]);
-// 🎨 Color Vertex Buffer Data
-const colors = new Float32Array([
-    1.0, 0.0, 0.0, // 🔴
-    0.0, 1.0, 0.0, // 🟢
-    0.0, 0.0, 1.0 // 🔵
-]);
+import imgUrlMoxxie from './images/moxxie.jpg';
 
-// 📇 Index Buffer Data
-const indices = new Uint16Array([0, 1, 2]);
+export class Renderer {
 
-export default class Renderer {
     canvas: HTMLCanvasElement;
 
-    // ⚙️ API Data Structures
+    // Device/Context objects
     adapter: GPUAdapter;
     device: GPUDevice;
-    queue: GPUQueue;
-
-    // 🎞️ Frame Backings
     context: GPUCanvasContext;
-    colorTexture: GPUTexture;
-    colorTextureView: GPUTextureView;
-    depthTexture: GPUTexture;
-    depthTextureView: GPUTextureView;
+    format : GPUTextureFormat;
 
-    // 🔺 Resources
-    positionBuffer: GPUBuffer;
-    colorBuffer: GPUBuffer;
-    indexBuffer: GPUBuffer;
-    vertModule: GPUShaderModule;
-    fragModule: GPUShaderModule;
+    // Pipeline objects
+    uniformBuffer: GPUBuffer;
+    bindGroup: GPUBindGroup;
     pipeline: GPURenderPipeline;
 
-    commandEncoder: GPUCommandEncoder;
-    passEncoder: GPURenderPassEncoder;
+    // Assets
+    material: Material;
+    triangleMesh: TriangleMesh;
+    t: number;
 
-    constructor(canvas) {
+
+    constructor(canvas: HTMLCanvasElement){
         this.canvas = canvas;
+        this.t = 0.0;
     }
 
-    // 🏎️ Start the rendering engine
-    async start() {
-        if (await this.initializeAPI()) {
-            this.resizeBackings();
-            await this.initializeResources();
-            this.render();
-        }
+   async Initialize() {
+
+        await this.setupDevice();
+
+        await this.createAssets();
+    
+        await this.makePipeline();
+    
+        this.render();
     }
 
-    // 🌟 Initialize WebGPU
-    async initializeAPI(): Promise<boolean> {
-        try {
-            // 🏭 Entry to WebGPU
-            const entry: GPU = navigator.gpu;
-            if (!entry) {
-                return false;
-            }
+    async setupDevice() {
 
-            // 🔌 Physical Device Adapter
-            this.adapter = await entry.requestAdapter();
+        //adapter: wrapper around (physical) GPU.
+        //Describes features and limits
+        this.adapter = <GPUAdapter> await navigator.gpu?.requestAdapter();
+        //device: wrapper around GPU functionality
+        //Function calls are made through the device
+        this.device = <GPUDevice> await this.adapter?.requestDevice();
+        //context: similar to vulkan instance (or OpenGL context)
+        this.context = <GPUCanvasContext> this.canvas.getContext("webgpu");
+        this.format = "bgra8unorm";
+        this.context.configure({
+            device: this.device,
+            format: this.format,
+            alphaMode: "opaque"
+        });
 
-            // 💻 Logical Device
-            this.device = await this.adapter.requestDevice();
-
-            // 📦 Queue
-            this.queue = this.device.queue;
-        } catch (e) {
-            console.error(e);
-            return false;
-        }
-
-        return true;
     }
 
-    // 🍱 Initialize resources to render triangle (buffers, shaders, pipeline)
-    async initializeResources() {
-        // 🔺 Buffers
-        const createBuffer = (
-            arr: Float32Array | Uint16Array,
-            usage: number
-        ) => {
-            // 📏 Align to 4 bytes (thanks @chrimsonite)
-            let desc = {
-                size: (arr.byteLength + 3) & ~3,
-                usage,
-                mappedAtCreation: true
-            };
-            let buffer = this.device.createBuffer(desc);
-            const writeArray =
-                arr instanceof Uint16Array
-                    ? new Uint16Array(buffer.getMappedRange())
-                    : new Float32Array(buffer.getMappedRange());
-            writeArray.set(arr);
-            buffer.unmap();
-            return buffer;
-        };
+    async makePipeline() {
 
-        this.positionBuffer = createBuffer(positions, GPUBufferUsage.VERTEX);
-        this.colorBuffer = createBuffer(colors, GPUBufferUsage.VERTEX);
-        this.indexBuffer = createBuffer(indices, GPUBufferUsage.INDEX);
+        this.uniformBuffer = this.device.createBuffer({
+            size: 64 * 3,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
 
-        // 🖍️ Shaders
-        const vsmDesc = {
-            code: vertShaderCode
-        };
-        this.vertModule = this.device.createShaderModule(vsmDesc);
+        const bindGroupLayout = this.device.createBindGroupLayout({
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX,
+                    buffer: {}
+                },
+                {
+                    binding: 1,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: {}
+                },
+                {
+                    binding: 2,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    sampler: {}
+                }
+            ],
+        });
+    
+        this.bindGroup = this.device.createBindGroup({
+            layout: bindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: {
+                        buffer: this.uniformBuffer
+                    }
+                },
+                {
+                    binding: 1,
+                    resource: this.material.view
+                },
+                {
+                    binding: 2,
+                    resource: this.material.sampler
+                }
+            ]
+        });
+        
+        const pipelineLayout = this.device.createPipelineLayout({
+            bindGroupLayouts: [bindGroupLayout]
+        });
+    
+        this.pipeline = this.device.createRenderPipeline({
+            vertex : {
+                module : this.device.createShaderModule({
+                    code : shader
+                }),
+                entryPoint : "vs_main",
+                buffers: [this.triangleMesh.bufferLayout,]
+            },
+    
+            fragment : {
+                module : this.device.createShaderModule({
+                    code : shader
+                }),
+                entryPoint : "fs_main",
+                targets : [{
+                    format : this.format
+                }]
+            },
+    
+            primitive : {
+                topology : "triangle-list"
+            },
+    
+            layout: pipelineLayout
+        });
 
-        const fsmDesc = {
-            code: fragShaderCode
-        };
-        this.fragModule = this.device.createShaderModule(fsmDesc);
-
-        // ⚗️ Graphics Pipeline
-
-        // 🔣 Input Assembly
-        const positionAttribDesc: GPUVertexAttribute = {
-            shaderLocation: 0, // [[location(0)]]
-            offset: 0,
-            format: 'float32x3'
-        };
-        const colorAttribDesc: GPUVertexAttribute = {
-            shaderLocation: 1, // [[location(1)]]
-            offset: 0,
-            format: 'float32x3'
-        };
-        const positionBufferDesc: GPUVertexBufferLayout = {
-            attributes: [positionAttribDesc],
-            arrayStride: 4 * 3, // sizeof(float) * 3
-            stepMode: 'vertex'
-        };
-        const colorBufferDesc: GPUVertexBufferLayout = {
-            attributes: [colorAttribDesc],
-            arrayStride: 4 * 3, // sizeof(float) * 3
-            stepMode: 'vertex'
-        };
-
-        // 🌑 Depth
-        const depthStencil: GPUDepthStencilState = {
-            depthWriteEnabled: true,
-            depthCompare: 'less',
-            format: 'depth24plus-stencil8'
-        };
-
-        // 🦄 Uniform Data
-        const pipelineLayoutDesc = { bindGroupLayouts: [] };
-        const layout = this.device.createPipelineLayout(pipelineLayoutDesc);
-
-        // 🎭 Shader Stages
-        const vertex: GPUVertexState = {
-            module: this.vertModule,
-            entryPoint: 'main',
-            buffers: [positionBufferDesc, colorBufferDesc]
-        };
-
-        // 🌀 Color/Blend State
-        const colorState: GPUColorTargetState = {
-            format: 'bgra8unorm'
-        };
-
-        const fragment: GPUFragmentState = {
-            module: this.fragModule,
-            entryPoint: 'main',
-            targets: [colorState]
-        };
-
-        // 🟨 Rasterization
-        const primitive: GPUPrimitiveState = {
-            frontFace: 'cw',
-            cullMode: 'none',
-            topology: 'triangle-list'
-        };
-
-        const pipelineDesc: GPURenderPipelineDescriptor = {
-            layout,
-
-            vertex,
-            fragment,
-
-            primitive,
-            depthStencil
-        };
-        this.pipeline = this.device.createRenderPipeline(pipelineDesc);
     }
 
-    // ↙️ Resize swapchain, frame buffer attachments
-    resizeBackings() {
-        // ⛓️ Swapchain
-        if (!this.context) {
-            this.context = this.canvas.getContext('webgpu');
-            const canvasConfig: GPUCanvasConfiguration = {
-                device: this.device,
-                format: 'bgra8unorm',
-                usage:
-                    GPUTextureUsage.RENDER_ATTACHMENT |
-                    GPUTextureUsage.COPY_SRC,
-                    alphaMode: 'opaque'
-            };
-            this.context.configure(canvasConfig);
-        }
-
-        const depthTextureDesc: GPUTextureDescriptor = {
-            size: [this.canvas.width, this.canvas.height, 1],
-            dimension: '2d',
-            format: 'depth24plus-stencil8',
-            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
-        };
-
-        this.depthTexture = this.device.createTexture(depthTextureDesc);
-        this.depthTextureView = this.depthTexture.createView();
-    }
-
-    // ✍️ Write commands to send to the GPU
-    encodeCommands() {
-        let colorAttachment: GPURenderPassColorAttachment = {
-            view: this.colorTextureView,
-            clearValue: { r: 0, g: 0, b: 0, a: 1 },
-            loadOp: 'clear',
-            storeOp: 'store'
-        };
-
-        const depthAttachment: GPURenderPassDepthStencilAttachment = {
-            view: this.depthTextureView,
-            depthClearValue: 1,
-            depthLoadOp: 'clear',
-            depthStoreOp: 'store',
-            stencilClearValue: 0,
-            stencilLoadOp: 'clear',
-            stencilStoreOp: 'store'
-        };
-
-        const renderPassDesc: GPURenderPassDescriptor = {
-            colorAttachments: [colorAttachment],
-            depthStencilAttachment: depthAttachment
-        };
-
-        this.commandEncoder = this.device.createCommandEncoder();
-
-        // 🖌️ Encode drawing commands
-        this.passEncoder = this.commandEncoder.beginRenderPass(renderPassDesc);
-        this.passEncoder.setPipeline(this.pipeline);
-        this.passEncoder.setViewport(
-            0,
-            0,
-            this.canvas.width,
-            this.canvas.height,
-            0,
-            1
-        );
-        this.passEncoder.setScissorRect(
-            0,
-            0,
-            this.canvas.width,
-            this.canvas.height
-        );
-        this.passEncoder.setVertexBuffer(0, this.positionBuffer);
-        this.passEncoder.setVertexBuffer(1, this.colorBuffer);
-        this.passEncoder.setIndexBuffer(this.indexBuffer, 'uint16');
-        this.passEncoder.drawIndexed(3, 1);
-        this.passEncoder.end();
-
-        this.queue.submit([this.commandEncoder.finish()]);
+    async createAssets() {
+        this.material = new Material();
+        await this.material.initialize(this.device, imgUrlMoxxie);
+        this.triangleMesh = new TriangleMesh(this.device);
     }
 
     render = () => {
-        // ⏭ Acquire next image from context
-        this.colorTexture = this.context.getCurrentTexture();
-        this.colorTextureView = this.colorTexture.createView();
+        this.t += 0.01;
+        if (this.t > 2.0 * Math.PI) 
+            this.t -= 2.0 * Math.PI;
 
-        // 📦 Write and submit commands to queue
-        this.encodeCommands();
+        const projection= mat4.create();
+        mat4.perspective(projection, Math.PI / 4, 1, 0.1, 10);
 
-        // ➿ Refresh canvas
+        const view = mat4.create();
+        mat4.lookAt(view, [-2, 0, 2], [0, 0, 0], [0, 0, 1]);
+
+        const model = mat4.create();
+        mat4.rotate(model, model, this.t, [0, 0, 1]);
+
+        this.device.queue.writeBuffer(this.uniformBuffer, 0, <ArrayBuffer>model);
+        this.device.queue.writeBuffer(this.uniformBuffer, 64, <ArrayBuffer>view);
+        this.device.queue.writeBuffer(this.uniformBuffer, 128, <ArrayBuffer>projection);
+
+
+        //command encoder: records draw commands for submission
+        const commandEncoder : GPUCommandEncoder = this.device.createCommandEncoder();
+        //texture view: image view to the color buffer in this case
+        const textureView : GPUTextureView = this.context.getCurrentTexture().createView();
+        //renderpass: holds draw commands, allocated from command encoder
+        const renderpass : GPURenderPassEncoder = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                clearValue: {r: 0.5, g: 0.0, b: 0.25, a: 1.0},
+                loadOp: "clear",
+                storeOp: "store"
+            }]
+        });
+        renderpass.setPipeline(this.pipeline);
+        renderpass.setVertexBuffer(0, this.triangleMesh.buffer);
+        renderpass.setBindGroup(0, this.bindGroup);
+        renderpass.draw(3, 1, 0, 0);
+        renderpass.end();
+    
+        this.device.queue.submit([commandEncoder.finish()]);
+
         requestAnimationFrame(this.render);
-    };
+    }
 }

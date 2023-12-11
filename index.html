@@ -1,8 +1,9 @@
-<!DOCTYPE html>
-<html lang="en-US">
+<!doctype html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>WebGPU Hello Triangle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebGPU</title>
     <style>
       html,
       body {
@@ -12,7 +13,7 @@
         font-size: 100%;
         font: inherit;
         vertical-align: baseline;
-        background: #000;
+        background: #333;
         width: 100%;
         height: 100%;
         display: flex;
@@ -22,7 +23,10 @@
     </style>
   </head>
   <body>
-    <canvas id="gfx"></canvas>
+    <div id="container">
+      <h3 id="compatibility-check"></h3>
+      <canvas id="gfx" width="600" height="600"></canvas>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
