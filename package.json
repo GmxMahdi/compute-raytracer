@@ -1,0 +1,20 @@
+{
+  "name": "refraction",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+	  "gl-matrix": "^3.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.x",
+    "@webgpu/types": "^0.1.26",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
+  }
+}
