@@ -47,9 +47,7 @@ export class App {
         this.scene.move_player(this.forwardsAmount, this.rightAmount);
 
         this.renderer.render(
-            this.scene.get_player(),
-            this.scene.get_triangles(),
-            this.scene.triangleCount
+            this.scene.getRenderables()
         );
 
         if (running) {
