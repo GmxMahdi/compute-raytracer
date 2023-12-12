@@ -1,14 +1,11 @@
-import { Renderer } from "./renderer";
-import shader from "./shaders/shader.wgsl?raw";
-import { TriangleMesh } from "./triangle-mesh";
-
-const outputLabel : HTMLElement = <HTMLElement> document.getElementById('compatibility-check');
+import { App } from "./control/app";
 
 if (!navigator.gpu) {
-    outputLabel.innerText = 'This browser cannot support WebGPU';
+    document.body.innerHTML = '<h1 style="color: white">This browser cannot support WebGPU yet :(r.</h1>'
     throw("This browser cannot support WebGPU");
 }
 
 const canvas : HTMLCanvasElement =  <HTMLCanvasElement> document.getElementById('gfx');
-const renderer = new Renderer(canvas);
-renderer.Initialize();
+const app = new App(canvas);
+await app.initialize();
+app.run();

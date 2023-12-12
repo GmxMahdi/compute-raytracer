@@ -20,13 +20,21 @@
         align-items: center;
         justify-content: center;
       }
+      p {
+        color: white;
+        font-size: 30px;
+        font-family: 'Segoe UI';
+      }
     </style>
   </head>
   <body>
     <div id="container">
-      <h3 id="compatibility-check"></h3>
-      <canvas id="gfx" width="600" height="600"></canvas>
+      <canvas id="gfx"></canvas>
+      <p>Current key: <span id="current-key">n/a</span></p>
+      <p>Mouse X: <span id="mouse-x">n/a</span></p>
+      <p>Mouse Y: <span id="mouse-y">n/a</span></p>
+
     </div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/main.ts" width="1200" height="800"></script>
   </body>
 </html>

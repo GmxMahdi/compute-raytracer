@@ -3,11 +3,18 @@ import { Material } from "./material";
 import { TriangleMesh } from "./triangle-mesh";
 import {mat4} from 'gl-matrix';
 
-import imgUrlMoxxie from './images/moxxie.jpg';
+import imgUrlMoxxie from '../images/moxxie.jpg';
+import { Camera } from "../model/camera";
+import { Triangle } from "../model/triangle";
 
 export class Renderer {
 
+    width: number = 1200;
+    height: number = 800;
     canvas: HTMLCanvasElement;
+
+    dt: number = 0;
+    lastTimeElasped: number = 0;
 
     // Device/Context objects
     adapter: GPUAdapter;
@@ -23,23 +30,20 @@ export class Renderer {
     // Assets
     material: Material;
     triangleMesh: TriangleMesh;
-    t: number;
 
 
     constructor(canvas: HTMLCanvasElement){
         this.canvas = canvas;
-        this.t = 0.0;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
     }
 
-   async Initialize() {
-
+   async initialize() {
         await this.setupDevice();
 
         await this.createAssets();
     
         await this.makePipeline();
-    
-        this.render();
     }
 
     async setupDevice() {
@@ -146,21 +150,13 @@ export class Renderer {
         this.triangleMesh = new TriangleMesh(this.device);
     }
 
-    render = () => {
-        this.t += 0.01;
-        if (this.t > 2.0 * Math.PI) 
-            this.t -= 2.0 * Math.PI;
+    async render(camera: Camera, triangles: Triangle[]) {
 
         const projection= mat4.create();
-        mat4.perspective(projection, Math.PI / 4, 1, 0.1, 10);
+        mat4.perspective(projection, Math.PI / 4, this.width / this.height, 0.1, 10);
 
-        const view = mat4.create();
-        mat4.lookAt(view, [-2, 0, 2], [0, 0, 0], [0, 0, 1]);
+        const view = camera.get_view();
 
-        const model = mat4.create();
-        mat4.rotate(model, model, this.t, [0, 0, 1]);
-
-        this.device.queue.writeBuffer(this.uniformBuffer, 0, <ArrayBuffer>model);
         this.device.queue.writeBuffer(this.uniformBuffer, 64, <ArrayBuffer>view);
         this.device.queue.writeBuffer(this.uniformBuffer, 128, <ArrayBuffer>projection);
 
@@ -180,12 +176,16 @@ export class Renderer {
         });
         renderpass.setPipeline(this.pipeline);
         renderpass.setVertexBuffer(0, this.triangleMesh.buffer);
-        renderpass.setBindGroup(0, this.bindGroup);
-        renderpass.draw(3, 1, 0, 0);
+
+        for (const triangle of triangles) {
+            const model = triangle.get_model();
+            this.device.queue.writeBuffer(this.uniformBuffer, 0, <ArrayBuffer>model);
+            renderpass.setBindGroup(0, this.bindGroup);
+            renderpass.draw(3, 1, 0, 0);
+        }
+
         renderpass.end();
     
         this.device.queue.submit([commandEncoder.finish()]);
-
-        requestAnimationFrame(this.render);
     }
 }
