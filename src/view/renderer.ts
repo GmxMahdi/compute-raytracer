@@ -1,5 +1,6 @@
 import shader from "./shaders/shader.wgsl?raw";
 import { Material } from "./material";
+import { ObjectMesh } from "./obj-mesh";
 import { TriangleMesh } from "./triangle-mesh";
 import { QuadMesh } from "./quad-mesh";
 import {mat4} from 'gl-matrix';
@@ -7,6 +8,8 @@ import { ObjectTypes, RenderData } from "../definitions/definitions";
 
 import imgURLmoxxie from '../images/moxxie.jpg';
 import imgURLchecker from '../images/checker.jpg';
+import objURLchair from '../models/cat.obj?url';
+
 
 
 export class Renderer {
@@ -43,6 +46,7 @@ export class Renderer {
     triangleMesh: TriangleMesh;
     quadMaterial: Material;
     quadMesh: QuadMesh;
+    chairMesh: ObjectMesh;
     objectBuffer: GPUBuffer;
 
 
@@ -62,7 +66,7 @@ export class Renderer {
         await this.makeDepthBufferResources();
     
         await this.makePipeline();
-        
+
         await this.makeFrameGroup();
 
     }
@@ -131,6 +135,9 @@ export class Renderer {
 
         this.quadMaterial = new Material();
         this.quadMesh = new QuadMesh(this.device);
+
+        this.chairMesh = new ObjectMesh();
+        await this.chairMesh.initialize(this.device, objURLchair, true, true, 0.01);
 
         this.uniformBuffer = this.device.createBuffer({
             size: 64 * 2,
@@ -292,7 +299,16 @@ export class Renderer {
             0, objectsDrawn
         );
         objectsDrawn += renderables.objectCounts[ObjectTypes.QUAD];
-        
+
+        // Statue
+        renderpass.setBindGroup(1, this.triangleMaterial.bindGroup);
+        renderpass.setVertexBuffer(0, this.chairMesh.buffer);
+        renderpass.draw(
+            this.chairMesh.vertexCount, 1, 
+            0, objectsDrawn
+        );
+        objectsDrawn += 1;
+
         renderpass.end();
     
         this.device.queue.submit([commandEncoder.finish()]);

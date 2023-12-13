@@ -7,6 +7,8 @@
     "moduleResolution": "Node",
 
     "allowJs": true,
+    "isolatedModules": true,
+    "useDefineForClassFields": true,
     "sourceMap": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -17,10 +19,8 @@
 
     "typeRoots": [
       "./node_modules/@webgpu/types", 
-      "./node_modules/@types"
+      "./node_modules/@types",
     ],
-
-    "types": ["node"],
   },
-  "include": ["src", "node_modules/@webgpu/types/**/*"]
+  "include": ["src/**/*.ts", "node_modules/@webgpu/types/**/*"]
 }
