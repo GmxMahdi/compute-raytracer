@@ -9,6 +9,8 @@ import { ObjectTypes, RenderData } from "../definitions/definitions";
 import imgURLmoxxie from '../images/moxxie.jpg';
 import imgURLchecker from '../images/checker.jpg';
 import objURLchair from '../models/cat.obj?url';
+import imgURLskybox from '../images/space-skybox.png';
+import { CubemapMaterial } from "./cubemap-material";
 
 
 
@@ -42,6 +44,7 @@ export class Renderer {
 
 
     // Assets
+    skyboxMaterial : CubemapMaterial;
     triangleMaterial: Material;
     triangleMesh: TriangleMesh;
     quadMaterial: Material;
@@ -76,9 +79,11 @@ export class Renderer {
         //adapter: wrapper around (physical) GPU.
         //Describes features and limits
         this.adapter = <GPUAdapter> await navigator.gpu?.requestAdapter();
+
         //device: wrapper around GPU functionality
         //Function calls are made through the device
         this.device = <GPUDevice> await this.adapter?.requestDevice();
+
         //context: similar to vulkan instance (or OpenGL context)
         this.context = <GPUCanvasContext> this.canvas.getContext("webgpu");
         this.format = "bgra8unorm";
@@ -138,6 +143,9 @@ export class Renderer {
 
         this.chairMesh = new ObjectMesh();
         await this.chairMesh.initialize(this.device, objURLchair, true, true, 0.01);
+        
+        this.skyboxMaterial = new CubemapMaterial();
+        this.skyboxMaterial.intiialize(this.device, imgURLskybox);
 
         this.uniformBuffer = this.device.createBuffer({
             size: 64 * 2,
