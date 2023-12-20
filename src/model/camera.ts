@@ -27,6 +27,7 @@ export class Camera {
         );
 
         vec3.cross(this.right, this.forwards, [0, 0, 1]);
+        vec3.normalize(this.right, this.right);
         vec3.cross(this.up, this.right, this.forwards);
 
         const target: vec3 = vec3.create();
