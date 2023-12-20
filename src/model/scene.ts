@@ -30,7 +30,7 @@ export class Scene {
         this.makeQuads();
         this.statue = new Statue([0, 0, 0], [0, 0, 0]);
 
-        this.player = new Camera([-2, 0, 0.5], 0, 0);
+        this.player = new Camera([-2, 0.5, 0], 0, 0);
     }
 
     update() {
@@ -67,7 +67,7 @@ export class Scene {
         let i: number = 0;
         for (let j = -5; j < 5; ++j) {
             this.triangles.push(new Triangle(
-                [2, 0, j],
+                [2, 0.5, j],
                 0
             ));
 

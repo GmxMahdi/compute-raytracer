@@ -17,6 +17,7 @@ export class Camera {
         this.right = vec3.create();
         this.up = vec3.create();
         this.view = mat4.create();
+        this.update();
     }
 
     update() {
@@ -31,11 +32,12 @@ export class Camera {
         vec3.normalize(this.right, this.right);
 
         vec3.cross(this.up, this.right, this.forwards);
-        vec3.normalize(this.up, this.up)
+        vec3.normalize(this.up, this.up);
 
         const target: vec3 = vec3.create();
         vec3.add(target, this.position, this.forwards);
 
+        console.log(this.forwards);
         this.view = mat4.create();
         mat4.lookAt(this.view, this.position, target, this.up);
     }

@@ -1,10 +1,11 @@
 import { Renderer } from "../view/renderer";
 import { Scene } from "../model/scene";
+import { RendererRaytracing } from "../view/renderer-raytracing";
 
 export class App {
 
     canvas: HTMLCanvasElement;
-    renderer: Renderer;
+    renderer: RendererRaytracing;
     scene: Scene;
 
     fpsLabel: HTMLElement;
@@ -25,7 +26,8 @@ export class App {
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
-        this.renderer = new Renderer(canvas);
+        // this.renderer = new Renderer(canvas);
+        this.renderer = new RendererRaytracing(canvas);
         this.scene = new Scene();
 
         this.fpsLabel = document.getElementById('current-fps');
@@ -58,13 +60,13 @@ export class App {
 
         this.updateDeltaTime(timeStamp);
 
-        this.scene.update();
-        this.scene.movePlayer(this.forwardsAmount, this.rightAmount);
-
-        this.renderer.render(
-            this.scene.getRenderables(),
-            this.scene.player
-        );
+        this.renderer.render();
+        // this.scene.update();
+        // this.scene.movePlayer(this.forwardsAmount, this.rightAmount);
+        // this.renderer.render(
+        //     this.scene.getRenderables(),
+        //     this.scene.player
+        // );
 
         if (running) {
             requestAnimationFrame(this._run);

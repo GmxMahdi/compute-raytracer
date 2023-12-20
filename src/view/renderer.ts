@@ -146,7 +146,7 @@ export class Renderer {
         this.quadMesh = new QuadMesh(this.device);
 
         this.chairMesh = new ObjectMesh();
-        await this.chairMesh.initialize(this.device, objURLchair, /*invertYZ*/ false, /*alignBottom*/ true, /*scale*/0.01);
+        await this.chairMesh.initialize(this.device, objURLchair, /*invertYZ*/ false, /*alignBottom*/ true, /*scale*/0.02);
         
         this.skyboxMaterial = new CubemapMaterial();
         await this.skyboxMaterial.intiialize(this.device, imgURLskybox);
