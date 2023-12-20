@@ -1,7 +1,7 @@
 import { App } from "./control/app";
 
 if (!navigator.gpu) {
-    document.body.innerHTML = '<h1 style="color: white">This browser cannot support WebGPU yet :(r.</h1>'
+    document.body.innerHTML = '<h1 style="color: white">This browser cannot support WebGPU yet :(.</h1>'
     throw("This browser cannot support WebGPU");
 }
 

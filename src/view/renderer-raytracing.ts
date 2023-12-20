@@ -1,3 +1,5 @@
+import { Camera } from '../model/camera';
+import { Scene } from '../model/scene';
 import { SceneRaytracing } from '../model/scene-raytracing';
 import shaderRaytracerKernel from './shaders/raytracer-kernel.wgsl?raw';
 import shaderScreen from './shaders/screen-shader.wgsl?raw';
@@ -38,8 +40,8 @@ export class RendererRaytracing {
     // Scene
     scene: SceneRaytracing;
 
-
-    constructor(canvas: HTMLCanvasElement){
+    constructor(canvas: HTMLCanvasElement, scene: SceneRaytracing){
+        this.scene = scene;
         this.canvas = canvas;
         this.canvas.width = this.width;
         this.canvas.height = this.height;
@@ -116,8 +118,6 @@ export class RendererRaytracing {
     }
 
     async createAssets() {
-        this.scene = new SceneRaytracing();
-
         this.colorBuffer = this.device.createTexture({
             size: {
                 width: this.canvas.width,
@@ -302,6 +302,8 @@ export class RendererRaytracing {
     }
 
     async render() {
+        const performanceStartTime = performance.now();
+
         this.updateScene();
 
         //command encoder: records draw commands for submission
@@ -331,5 +333,10 @@ export class RendererRaytracing {
         renderpass.end();
     
         this.device.queue.submit([commandEncoder.finish()]);
+
+        this.device.queue.onSubmittedWorkDone().then(() => {
+            let performanceTimeEnd = performance.now();
+            document.getElementById('render-time').innerText = (performanceTimeEnd - performanceStartTime).toString() + 'ms';
+        })
     }
 }

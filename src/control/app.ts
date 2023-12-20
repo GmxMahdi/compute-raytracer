@@ -1,14 +1,17 @@
 import { Renderer } from "../view/renderer";
 import { Scene } from "../model/scene";
 import { RendererRaytracing } from "../view/renderer-raytracing";
+import { SceneRaytracing } from "../model/scene-raytracing";
 
 export class App {
 
     canvas: HTMLCanvasElement;
     renderer: RendererRaytracing;
-    scene: Scene;
+    scene: SceneRaytracing;
+    nbSpheres: number = 10;
 
     fpsLabel: HTMLElement;
+    sphereCountLabel: HTMLElement;
     keyLabel: HTMLElement;
     mouseXLabel: HTMLElement;
     mouseYLabel: HTMLElement;
@@ -27,10 +30,14 @@ export class App {
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
         // this.renderer = new Renderer(canvas);
-        this.renderer = new RendererRaytracing(canvas);
-        this.scene = new Scene();
+        this.scene = new SceneRaytracing(this.nbSpheres);
+        this.renderer = new RendererRaytracing(canvas, this.scene);
 
         this.fpsLabel = document.getElementById('current-fps');
+        
+        this.sphereCountLabel = document.getElementById('sphere-count');
+        this.sphereCountLabel.innerText = this.nbSpheres.toString();
+
         this.keyLabel = document.getElementById('current-key');
         this.mouseXLabel = document.getElementById('mouse-x');
         this.mouseYLabel = document.getElementById('mouse-y');
@@ -113,7 +120,7 @@ export class App {
         if (this.isControlsLocked) return;
         this.mouseXLabel.innerText = event.movementX.toString();
         this.mouseYLabel.innerText = event.movementY.toString();
-        this.scene.spinPlayer(event.movementX * this.sensitivity, event.movementY * this.sensitivity);
+        // this.scene.spinPlayer(event.movementX * this.sensitivity, event.movementY * this.sensitivity);
     }
 
     private handlePointerLockChange() {
