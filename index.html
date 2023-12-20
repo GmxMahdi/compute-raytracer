@@ -25,16 +25,23 @@
         font-size: 30px;
         font-family: 'Segoe UI';
       }
+
+      #webgpu-info {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+      }
     </style>
   </head>
   <body>
     <div id="container">
       <canvas id="gfx"></canvas>
+    </div>
+    <div id="webgpu-info">
       <p>FPS: <span id="current-fps">n/a</span></p>
       <p>Current key: <span id="current-key">n/a</span></p>
       <p>Mouse X: <span id="mouse-x">n/a</span></p>
       <p>Mouse Y: <span id="mouse-y">n/a</span></p>
-
     </div>
     <script type="module" src="/src/main.ts" width="1200" height="800"></script>
   </body>
