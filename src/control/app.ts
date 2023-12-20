@@ -62,7 +62,8 @@ export class App {
         this.scene.movePlayer(this.forwardsAmount, this.rightAmount);
 
         this.renderer.render(
-            this.scene.getRenderables()
+            this.scene.getRenderables(),
+            this.scene.player
         );
 
         if (running) {

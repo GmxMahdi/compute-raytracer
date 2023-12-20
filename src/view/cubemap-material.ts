@@ -46,6 +46,15 @@ export class CubemapMaterial {
             {x: sw * 1, y: sh * 2},
         ]
 
+        // const positions = [
+        //     {x: sw * 2, y: sh},
+        //     {x: sw * 0, y: sh},
+        //     {x: sw * 1, y: 0},
+        //     {x: sw * 1, y: sh * 2},
+        //     {x: sw * 1, y: sh},
+        //     {x: sw * 3, y: sh},
+        // ]
+
         const imgBitmaps: ImageBitmap[] = [];
 
         for (let pos of positions) {
