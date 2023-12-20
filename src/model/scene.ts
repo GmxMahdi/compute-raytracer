@@ -97,7 +97,7 @@ export class Scene {
             }
     }
 
-    spin_player(dx: number, dy: number) {
+    spinPlayer(dx: number, dy: number) {
         this.player.eulers[2] -= dx;
         this.player.eulers[2] %= 360;
 
@@ -105,7 +105,7 @@ export class Scene {
         this.player.eulers[1] = clamp(this.player.eulers[1], -89, 89);
     }
 
-    move_player(forwardsAmount: number, rightAmount: number) {
+    movePlayer(forwardsAmount: number, rightAmount: number) {
         vec3.scaleAndAdd(
             this.player.position, this.player.position,
             this.player.forwards, forwardsAmount);
@@ -115,7 +115,7 @@ export class Scene {
             this.player.right, rightAmount);  
     }
 
-    get_player(): Camera {
+    getPlayer(): Camera {
         return this.player;
     }
 

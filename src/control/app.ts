@@ -59,7 +59,7 @@ export class App {
         this.updateDeltaTime(timeStamp);
 
         this.scene.update();
-        this.scene.move_player(this.forwardsAmount, this.rightAmount);
+        this.scene.movePlayer(this.forwardsAmount, this.rightAmount);
 
         this.renderer.render(
             this.scene.getRenderables()
@@ -110,7 +110,7 @@ export class App {
         if (this.isControlsLocked) return;
         this.mouseXLabel.innerText = event.movementX.toString();
         this.mouseYLabel.innerText = event.movementY.toString();
-        this.scene.spin_player(event.movementX * this.sensitivity, event.movementY * this.sensitivity);
+        this.scene.spinPlayer(event.movementX * this.sensitivity, event.movementY * this.sensitivity);
     }
 
     private handlePointerLockChange() {
