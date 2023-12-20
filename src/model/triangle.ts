@@ -9,16 +9,16 @@ export class Triangle {
     constructor(position: vec3, theta: number) {
         this.position = position;
         this.eulers = vec3.create();
-        this.eulers[2] = theta;
+        this.eulers[1] = theta;
     }
 
     update() {
-        this.eulers[2] += 1;
-        this.eulers[2] %= 360;
+        this.eulers[1] += 1;
+        this.eulers[1] %= 360;
 
         this.model = mat4.create();
         mat4.translate(this.model, this.model, this.position);
-        mat4.rotateZ(this.model, this.model, deg2rad(this.eulers[2]));
+        mat4.rotateY(this.model, this.model, deg2rad(this.eulers[1]));
     }
 
     get_model(): mat4 {

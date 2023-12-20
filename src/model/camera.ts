@@ -22,11 +22,12 @@ export class Camera {
     update() {
         this.forwards = vec3.fromValues(
             Math.cos(deg2rad(this.eulers[2])) * Math.cos(deg2rad(this.eulers[1])),
+            Math.sin(deg2rad(this.eulers[1])),
             Math.sin(deg2rad(this.eulers[2])) * Math.cos(deg2rad(this.eulers[1])),
-            Math.sin(deg2rad(this.eulers[1]))
+
         );
 
-        vec3.cross(this.right, this.forwards, [0, 0, 1]);
+        vec3.cross(this.right, this.forwards, [0, 1, 0]);
         vec3.normalize(this.right, this.right);
 
         vec3.cross(this.up, this.right, this.forwards);

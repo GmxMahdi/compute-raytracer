@@ -67,7 +67,7 @@ export class Scene {
         let i: number = 0;
         for (let j = -5; j < 5; ++j) {
             this.triangles.push(new Triangle(
-                [2, j, 0],
+                [2, 0, j],
                 0
             ));
 
@@ -82,10 +82,10 @@ export class Scene {
 
     makeQuads() {
         let i: number = this.triangleCount;
-        for (let x = -10; x <= 10; ++x)
-            for (let y = -5; y <= 5; ++y) {
+        for (let x = -2; x <= 2; ++x)
+            for (let y = -2; y <= 2; ++y) {
                 this.quads.push(new Quad(
-                    [x, y, 0],
+                    [x, 0, y],
                 ));
 
                 let blankMatrix = mat4.create();
@@ -98,7 +98,7 @@ export class Scene {
     }
 
     spinPlayer(dx: number, dy: number) {
-        this.player.eulers[2] -= dx;
+        this.player.eulers[2] += dx;
         this.player.eulers[2] %= 360;
 
         this.player.eulers[1] -= dy;

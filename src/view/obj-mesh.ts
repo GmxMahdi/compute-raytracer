@@ -124,8 +124,8 @@ export class ObjectMesh {
         this.offsetY = this.minY + (this.maxY - this.minY) / 2;
         this.offsetZ = this.minZ + (this.maxZ - this.minZ) / 2;
 
-        if (this.alignBottom && !this.invertYZ) this.offsetZ = this.minZ;
-        if (this.alignBottom &&  this.invertYZ) this.offsetY = this.minY; 
+        if (this.alignBottom &&  !this.invertYZ) this.offsetY = this.minY;
+        if (this.alignBottom &&  this.invertYZ) this.offsetZ = this.minZ; 
     }
 
     private readVertexLine(line: string) {

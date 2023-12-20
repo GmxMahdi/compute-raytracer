@@ -10,7 +10,7 @@ import { ObjectTypes, RenderData, PipelineType } from "../definitions/definition
 import imgURLmoxxie from '../images/moxxie.jpg';
 import imgURLchecker from '../images/checker.jpg';
 import objURLchair from '../models/cat.obj?url';
-import imgURLskybox from '../images/cubemap_skybox_test.png';
+import imgURLskybox from '../images/space-skybox.png';
 import { CubemapMaterial } from "./cubemap-material";
 import { Camera } from '../model/camera';
 
@@ -18,8 +18,8 @@ import { Camera } from '../model/camera';
 
 export class Renderer {
 
-    width: number = 1200;
-    height: number = 800;
+    width: number = 1100;
+    height: number = 600;
     canvas: HTMLCanvasElement;
 
     dt: number = 0;
@@ -146,7 +146,7 @@ export class Renderer {
         this.quadMesh = new QuadMesh(this.device);
 
         this.chairMesh = new ObjectMesh();
-        await this.chairMesh.initialize(this.device, objURLchair, true, true, 0.01);
+        await this.chairMesh.initialize(this.device, objURLchair, /*invertYZ*/ false, /*alignBottom*/ true, /*scale*/0.01);
         
         this.skyboxMaterial = new CubemapMaterial();
         await this.skyboxMaterial.intiialize(this.device, imgURLskybox);

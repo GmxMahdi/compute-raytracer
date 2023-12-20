@@ -12,8 +12,8 @@ export class Statue {
     }
 
     update() {
-        this.eulers[2] += 1;
-        this.eulers[2] %= 360;
+        this.eulers[1] += 1;
+        this.eulers[1] %= 360;
 
         this.model = mat4.create();
         mat4.translate(this.model, this.model, this.position);
