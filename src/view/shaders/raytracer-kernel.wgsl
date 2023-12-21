@@ -31,7 +31,7 @@ struct RenderState {
 @group(0) @binding(1) var<uniform> scene: SceneData;
 @group(0) @binding(2) var<storage, read> objects: ObjectData;
 
-@compute @workgroup_size(1, 1, 1)
+@compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     let screenSize: vec2<u32> = textureDimensions(colorBuffer);
     let screenPos: vec2<i32> = vec2<i32>(i32(globalInvocationID.x), i32(globalInvocationID.y));

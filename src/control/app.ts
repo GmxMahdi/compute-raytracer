@@ -8,7 +8,7 @@ export class App {
     canvas: HTMLCanvasElement;
     renderer: RendererRaytracing;
     scene: SceneRaytracing;
-    nbSpheres: number = 10;
+    nbSpheres: number = 30;
 
     fpsLabel: HTMLElement;
     sphereCountLabel: HTMLElement;

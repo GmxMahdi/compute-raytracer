@@ -312,7 +312,7 @@ export class RendererRaytracing {
         const raytracerPass : GPUComputePassEncoder = commandEncoder.beginComputePass();
         raytracerPass.setPipeline(this.raytracingPipeline);
         raytracerPass.setBindGroup(0, this.raytracingBindGroup);
-        raytracerPass.dispatchWorkgroups(this.canvas.width, this.canvas.height, 1);
+        raytracerPass.dispatchWorkgroups(Math.ceil(this.canvas.width / 8), Math.ceil(this.canvas.height / 8), 1);
         raytracerPass.end();
 
         //texture view: image view to the color buffer in this case
