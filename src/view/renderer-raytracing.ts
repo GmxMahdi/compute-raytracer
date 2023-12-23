@@ -54,8 +54,6 @@ export class RendererRaytracing {
         await this.setupDevice();
 
         await this.createAssets();
-
-        await this.makeDepthBufferResources();
     
         await this.makePipeline();
     }
@@ -79,45 +77,6 @@ export class RendererRaytracing {
             alphaMode: "opaque"
         });
 
-    }
-
-    async makeDepthBufferResources() {
-        this.depthStencilState = {
-            format: 'depth24plus-stencil8',
-            depthWriteEnabled: true,
-            depthCompare: 'less-equal',
-        };
-
-        const size: GPUExtent3D = {
-            width: this.canvas.width,
-            height: this.canvas.height,
-            depthOrArrayLayers: 1,
-        };
-
-        const depthBufferDescriptor: GPUTextureDescriptor = {
-            size,
-            format: 'depth24plus-stencil8',
-            usage: GPUTextureUsage.RENDER_ATTACHMENT
-        }
-        this.depthStencilBuffer = this.device.createTexture(depthBufferDescriptor);
-
-        const viewDescriptor: GPUTextureViewDescriptor = {
-            format: 'depth24plus-stencil8',
-            dimension: '2d',
-            aspect: 'all'
-        };
-        this.depthStencilView = this.depthStencilBuffer.createView(viewDescriptor);
-
-        this.depthStencilAttatchment = {
-            view: this.depthStencilView,
-            depthClearValue: 1.0,
-
-            depthLoadOp: 'clear',
-            depthStoreOp: 'store',
-
-            stencilLoadOp: 'clear',
-            stencilStoreOp: 'discard'
-        };
     }
 
     async createAssets() {
@@ -208,7 +167,7 @@ export class RendererRaytracing {
         }
         this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeData, 0, 8 * this.scene.nodesUsed);
 
-        const sphereIndexData = new Float32Array(8 * this.scene.nodesUsed);
+        const sphereIndexData = new Float32Array(8 * this.scene.spheres.length);
         for (let i = 0; i < this.scene.spheres.length; ++i) {
             sphereIndexData[i] = this.scene.sphereIndices[i];
         }
@@ -354,7 +313,7 @@ export class RendererRaytracing {
         })
     }
 
-    async render() {
+    render() {
         const performanceStartTime = performance.now();
 
         this.updateScene();

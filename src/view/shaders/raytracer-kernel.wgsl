@@ -63,7 +63,7 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     let up: vec3<f32> = scene.cameraUp;
 
     var ray: Ray;
-    ray.direction = vec3<f32>(forwards + horizontalCoefficient * right + verticalCoefficient * up);
+    ray.direction = normalize(forwards + horizontalCoefficient * right + verticalCoefficient * up);
     ray.origin = vec3<f32>(0.0, 0.0, 0.0);
 
     var pixelColor: vec3<f32> = rayColor(ray);
