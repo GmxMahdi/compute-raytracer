@@ -29,6 +29,9 @@ export class RendererRaytracing {
     sampler: GPUSampler;
     sceneParameters: GPUBuffer;
     sphereBuffer: GPUBuffer;
+    
+    nodeBuffer: GPUBuffer;
+    sphereIndexBuffer: GPUBuffer;
 
     // Pipeline Objects
     raytracingPipeline: GPUComputePipeline;
@@ -146,6 +149,16 @@ export class RendererRaytracing {
             size: 32 * this.scene.spheres.length,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
         });
+
+        this.sphereIndexBuffer = this.device.createBuffer({
+            size: 4 * this.scene.spheres.length,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+        });
+
+        this.nodeBuffer = this.device.createBuffer({
+            size: 32 * this.scene.nodesUsed,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+        });
     }
 
     updateScene() {
@@ -180,8 +193,26 @@ export class RendererRaytracing {
             sphereData[8 * i + 6] = this.scene.spheres[i].color[2];
             sphereData[8 * i + 7] = this.scene.spheres[i].radius;
         }
-
         this.device.queue.writeBuffer(this.sphereBuffer, 0, sphereData, 0, 8 * this.scene.spheres.length);
+
+        const nodeData = new Float32Array(8 * this.scene.nodesUsed);
+        for (let i = 0; i < this.scene.nodesUsed; ++i) {
+            nodeData[8 * i + 0] = this.scene.nodes[i].minCorner[0];
+            nodeData[8 * i + 1] = this.scene.nodes[i].minCorner[1];
+            nodeData[8 * i + 2] = this.scene.nodes[i].minCorner[2];
+            nodeData[8 * i + 3] = this.scene.nodes[i].leftChild;
+            nodeData[8 * i + 4] = this.scene.nodes[i].maxCorner[0];
+            nodeData[8 * i + 5] = this.scene.nodes[i].maxCorner[1];
+            nodeData[8 * i + 6] = this.scene.nodes[i].maxCorner[2];
+            nodeData[8 * i + 7] = this.scene.nodes[i].sphereCount;
+        }
+        this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeData, 0, 8 * this.scene.nodesUsed);
+
+        const sphereIndexData = new Float32Array(8 * this.scene.nodesUsed);
+        for (let i = 0; i < this.scene.spheres.length; ++i) {
+            sphereIndexData[i] = this.scene.sphereIndices[i];
+        }
+        this.device.queue.writeBuffer(this.sphereIndexBuffer, 0, sphereIndexData, 0, this.scene.spheres.length);
     }
 
     async makePipeline() {
@@ -207,7 +238,17 @@ export class RendererRaytracing {
                     binding: 2,
                     visibility: GPUShaderStage.COMPUTE,
                     buffer: { type: 'read-only-storage', hasDynamicOffset: false },
-                }
+                },
+                {
+                    binding: 3,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: 'read-only-storage'}
+                },
+                {
+                    binding: 4,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: 'read-only-storage'}
+                },
             ]
         });
 
@@ -228,6 +269,18 @@ export class RendererRaytracing {
                     binding: 2,
                     resource: {
                         buffer: this.sphereBuffer
+                    }
+                },
+                {
+                    binding: 3,
+                    resource: {
+                        buffer: this.nodeBuffer
+                    }
+                },
+                {
+                    binding: 4,
+                    resource: {
+                        buffer: this.sphereIndexBuffer
                     }
                 }
             ]
