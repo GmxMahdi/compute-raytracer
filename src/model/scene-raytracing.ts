@@ -24,7 +24,7 @@ export class SceneRaytracing {
                 +25 + 10.0 * Math.random()
             ];
 
-            const radius: number = 0.3 + 1.9 * Math.random();
+            const radius: number = 0.1 + 1.2 * Math.random();
 
             const color: number[] = [
                 0.3 + 0.7 * Math.random(),

@@ -32,7 +32,7 @@ export class CubemapMaterial {
         });
     }
 
-    async sampleCubeFaces(blob: Blob) {
+    private async sampleCubeFaces(blob: Blob) {
         const initImage = await createImageBitmap(blob);
         const sw = initImage.width / 4;
         const sh = initImage.height / 3;
@@ -54,7 +54,7 @@ export class CubemapMaterial {
         return imgBitmaps;
     }
 
-    async loadImageBitmaps(device: GPUDevice, imageDatas: ImageBitmap[]) {
+    private async loadImageBitmaps(device: GPUDevice, imageDatas: ImageBitmap[]) {
         this.texture = device.createTexture({
             dimension: "2d",
             size: {

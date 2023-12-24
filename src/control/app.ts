@@ -29,7 +29,6 @@ export class App {
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
-        // this.renderer = new Renderer(canvas);
         this.scene = new SceneRaytracing(this.nbSpheres);
         this.renderer = new RendererRaytracing(canvas, this.scene);
 

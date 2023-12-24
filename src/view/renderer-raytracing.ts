@@ -1,16 +1,16 @@
-import { Camera } from '../model/camera';
-import { Scene } from '../model/scene';
 import { SceneRaytracing } from '../model/scene-raytracing';
+import { CubemapMaterial } from './cubemap-material';
 import shaderRaytracerKernel from './shaders/raytracer-kernel.wgsl?raw';
 import shaderScreen from './shaders/screen-shader.wgsl?raw';
+import urlSkybox from '../images/space-skybox.png';
 
 
 
 
 export class RendererRaytracing {
 
-    width: number = 800;
-    height: number = 600;
+    width: number = 1700;
+    height: number = 800;
     canvas: HTMLCanvasElement;
 
     dt: number = 0;
@@ -29,6 +29,7 @@ export class RendererRaytracing {
     sampler: GPUSampler;
     sceneParameters: GPUBuffer;
     sphereBuffer: GPUBuffer;
+    skyboxMaterial : CubemapMaterial;
     
     nodeBuffer: GPUBuffer;
     sphereIndexBuffer: GPUBuffer;
@@ -80,6 +81,8 @@ export class RendererRaytracing {
     }
 
     async createAssets() {
+        this.skyboxMaterial = new CubemapMaterial();
+        await this.skyboxMaterial.intiialize(this.device, urlSkybox);
         this.colorBuffer = this.device.createTexture({
             size: {
                 width: this.canvas.width,
@@ -211,6 +214,16 @@ export class RendererRaytracing {
                     visibility: GPUShaderStage.COMPUTE,
                     buffer: { type: 'read-only-storage', hasDynamicOffset: false}
                 },
+                {
+                    binding: 5,
+                    visibility: GPUShaderStage.COMPUTE,
+                    texture: { viewDimension: 'cube' }
+                },
+                {
+                    binding: 6,
+                    visibility: GPUShaderStage.COMPUTE,
+                    sampler: {}
+                },
             ]
         });
 
@@ -244,6 +257,14 @@ export class RendererRaytracing {
                     resource: {
                         buffer: this.sphereIndexBuffer
                     }
+                },
+                {
+                    binding: 5,
+                    resource: this.skyboxMaterial.view
+                },
+                {
+                    binding: 6,
+                    resource: this.skyboxMaterial.sampler
                 }
             ]
         });
