@@ -185,7 +185,7 @@ fn hitAABB(ray: Ray, node: Node) -> f32 {
     var tMax: vec3<f32> = max(t1, t2);
 
     var t_min: f32 = max(max(tMin.x, tMin.y), tMin.z);
-    var t_max: f32 = max(max(tMax.x, tMax.y), tMax.z);
+    var t_max: f32 = min(min(tMax.x, tMax.y), tMax.z);
 
     if (t_min > t_max || t_max < 0) {
         return 99999;
