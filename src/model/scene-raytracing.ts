@@ -2,6 +2,7 @@ import { Camera } from "./camera";
 import { Sphere } from "./sphere";
 import { Node } from "./acceleration/node";
 import { vec3 } from "gl-matrix";
+import { clamp } from "../utils/more-math";
 
 export class SceneRaytracing {
     spheres: Sphere[]
@@ -18,12 +19,12 @@ export class SceneRaytracing {
         for (let i = 0; i < this.spheres.length; i++) {
 
             const center: number[] = [
-                -25 + 50.0 * Math.random(),
-                -25 + 50.0 * Math.random(),
-                +50 + 100.0 * Math.random()
+                -10 + 20.0 * Math.random(),
+                -10 + 20.0 * Math.random(),
+                +25 + 10.0 * Math.random()
             ];
 
-            const radius: number = 0.1 + 1.9 * Math.random();
+            const radius: number = 0.3 + 1.9 * Math.random();
 
             const color: number[] = [
                 0.3 + 0.7 * Math.random(),
@@ -39,7 +40,26 @@ export class SceneRaytracing {
         this.buildBVH();
     }
 
-    buildBVH() {
+    spinCamera(dx: number, dy: number) {
+        this.camera.eulers[2] += dx;
+        this.camera.eulers[2] %= 360;
+
+        this.camera.eulers[1] += dy;
+        this.camera.eulers[1] = clamp(this.camera.eulers[1], -89, 89);
+        this.camera.update();
+    }
+
+    moveCamera(forwardsAmount: number, rightAmount: number) {
+        vec3.scaleAndAdd(
+            this.camera.position, this.camera.position,
+            this.camera.forwards, forwardsAmount);
+            
+        vec3.scaleAndAdd(
+            this.camera.position, this.camera.position,
+            this.camera.right, rightAmount);  
+    }
+
+    private buildBVH() {
 
         this.sphereIndices = new Array(this.spheres.length)
         for (var i:number = 0; i < this.sphereCount; i += 1) {
@@ -60,7 +80,7 @@ export class SceneRaytracing {
         this.subdivide(0);
     }
 
-    updateBounds(nodeIndex: number) {
+    private updateBounds(nodeIndex: number) {
 
         var node: Node = this.nodes[nodeIndex];
         node.minCorner = [999999, 999999, 999999];
@@ -79,7 +99,7 @@ export class SceneRaytracing {
         }
     }
 
-    subdivide(nodeIndex: number) {
+    private subdivide(nodeIndex: number) {
 
         var node: Node = this.nodes[nodeIndex];
 

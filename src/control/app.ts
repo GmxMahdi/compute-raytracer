@@ -66,14 +66,9 @@ export class App {
         let running: boolean = true;
 
         this.updateDeltaTime(timeStamp);
+        this.scene.moveCamera(this.forwardsAmount, this.rightAmount);
 
         this.renderer.render();
-        // this.scene.update();
-        // this.scene.movePlayer(this.forwardsAmount, this.rightAmount);
-        // this.renderer.render(
-        //     this.scene.getRenderables(),
-        //     this.scene.player
-        // );
 
         if (running) {
             requestAnimationFrame(this._run);
@@ -96,12 +91,13 @@ export class App {
 
     private handleKeyDownEvent(event: KeyboardEvent) {
         if (this.isControlsLocked) return;
+        const SPEED = 0.1;
 
-        if (event.code === 'KeyW') this.forwardsAmount = 0.02;
-        if (event.code === 'KeyS') this.forwardsAmount = -0.02;
+        if (event.code === 'KeyW') this.forwardsAmount = SPEED;
+        if (event.code === 'KeyS') this.forwardsAmount = -SPEED;
 
-        if (event.code === 'KeyA') this.rightAmount = -0.02;
-        if (event.code === 'KeyD') this.rightAmount = 0.02;
+        if (event.code === 'KeyA') this.rightAmount = -SPEED;
+        if (event.code === 'KeyD') this.rightAmount = SPEED;
         
         this.keyLabel.innerText = event.code;
     }
@@ -120,7 +116,7 @@ export class App {
         if (this.isControlsLocked) return;
         this.mouseXLabel.innerText = event.movementX.toString();
         this.mouseYLabel.innerText = event.movementY.toString();
-        // this.scene.spinPlayer(event.movementX * this.sensitivity, event.movementY * this.sensitivity);
+        this.scene.spinCamera(event.movementX * this.sensitivity, event.movementY * this.sensitivity);
     }
 
     private handlePointerLockChange() {

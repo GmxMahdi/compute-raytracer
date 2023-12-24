@@ -122,6 +122,7 @@ export class RendererRaytracing {
     }
 
     updateScene() {
+        const maxBounces: number = 4;
         this.device.queue.writeBuffer(
             this.sceneParameters, 0,
             new Float32Array([
@@ -136,7 +137,7 @@ export class RendererRaytracing {
                 this.scene.camera.right[0],
                 this.scene.camera.right[1],
                 this.scene.camera.right[2],
-                0.0,
+                maxBounces,
                 this.scene.camera.up[0],
                 this.scene.camera.up[1],
                 this.scene.camera.up[2],

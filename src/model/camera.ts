@@ -37,7 +37,6 @@ export class Camera {
         const target: vec3 = vec3.create();
         vec3.add(target, this.position, this.forwards);
 
-        console.log(this.forwards);
         this.view = mat4.create();
         mat4.lookAt(this.view, this.position, target, this.up);
     }

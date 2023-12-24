@@ -29,6 +29,7 @@ struct SceneData {
     cameraPos: vec3<f32>,
     cameraForwards: vec3<f32>,
     cameraRight: vec3<f32>,
+    maxBounces: f32,
     cameraUp: vec3<f32>,
     sphereCount: f32
 }
@@ -41,7 +42,9 @@ struct Ray {
 struct RenderState {
     t: f32,
     color: vec3<f32>,
-    hit: bool
+    hit: bool,
+    position: vec3<f32>,
+    normal: vec3<f32>
 }
 
 @group(0) @binding(0) var colorBuffer: texture_storage_2d<rgba8unorm, write>;
@@ -72,12 +75,40 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
 }
 
 fn rayColor(ray: Ray) -> vec3<f32> {
-    var color: vec3<f32> = vec3(0.0, 0.0, 0.0);
+    var color: vec3<f32> = vec3(1.0);
+    var result: RenderState;
 
-    var nearestHit: f32 = 9999;
-    var hasHit: bool = false;
+    var tempRay: Ray;
+    tempRay.origin = ray.origin;
+    tempRay.direction = ray.direction;
+
+    let bounces: u32 = u32(scene.maxBounces);
+    for (var bounce: u32 = 0; bounce < bounces; bounce++) {
+        result = trace(tempRay);
+        color = color * result.color;
+
+        if (!result.hit) {
+            break;
+        }
+
+        tempRay.origin = result.position;
+        tempRay.direction = normalize(reflect(tempRay.direction, result.normal));
+    }
+
+    if (result.hit) {
+        color = vec3(0.0);
+    }
+    return color;
+}
+
+fn trace(ray: Ray) -> RenderState {
+    // Setup render state
     var renderState: RenderState;
+    renderState.color = vec3<f32>(0.8, 0.7, 0.7);
+    renderState.hit = false;
+    var nearestHit: f32 = 9999;
 
+    // Setup BVH
     var node: Node = tree.nodes[0];
     var stack: array<Node, 15>;
     var stackLocation: u32 = 0;
@@ -133,7 +164,6 @@ fn rayColor(ray: Ray) -> vec3<f32> {
                 if (newRenderState.hit) {
                     nearestHit = newRenderState.t;
                     renderState = newRenderState;
-                    hasHit = true;
                 }
             }
 
@@ -147,11 +177,7 @@ fn rayColor(ray: Ray) -> vec3<f32> {
         }
     }
 
-    if (hasHit) {
-        color = renderState.color;
-    }
-
-    return color;
+    return renderState;
 }
 
 fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldRenderState: RenderState) -> RenderState {
@@ -166,6 +192,8 @@ fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldRenderState: Ren
     if (discriminant > 0.0) {
         let t: f32 = (-b -sqrt(discriminant)) / (2 * a);
         if (t > tMin && t < tMax) {
+            renderState.position = ray.origin + t * ray.direction;
+            renderState.normal = normalize(renderState.position - sphere.center);
             renderState.t = t;
             renderState.color = sphere.color;
             renderState.hit = true;
