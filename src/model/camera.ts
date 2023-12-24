@@ -1,9 +1,9 @@
-import {vec3, mat4} from 'gl-matrix';
+import {vec2, vec3, mat4} from 'gl-matrix';
 import { deg2rad } from '../utils/more-math';
 
 export class Camera {
     position: vec3;
-    eulers: vec3;
+    eulers: vec2;
     view: mat4;
 
     forwards: vec3;
@@ -12,7 +12,7 @@ export class Camera {
 
     constructor(position: vec3, theta: number, phi: number) {
         this.position = position;
-        this.eulers = vec3.fromValues(0, phi, theta);
+        this.eulers = vec2.fromValues(phi, theta);
         this.forwards = vec3.create();
         this.right = vec3.create();
         this.up = vec3.create();
@@ -22,10 +22,9 @@ export class Camera {
 
     update() {
         this.forwards = vec3.fromValues(
-            Math.cos(deg2rad(this.eulers[2])) * Math.cos(deg2rad(this.eulers[1])),
+            Math.cos(deg2rad(this.eulers[0])) * Math.cos(deg2rad(this.eulers[1])),
             Math.sin(deg2rad(this.eulers[1])),
-            Math.sin(deg2rad(this.eulers[2])) * Math.cos(deg2rad(this.eulers[1])),
-
+            Math.sin(deg2rad(this.eulers[0])) * Math.cos(deg2rad(this.eulers[1])),
         );
 
         vec3.cross(this.right, this.forwards, [0, 1, 0]);

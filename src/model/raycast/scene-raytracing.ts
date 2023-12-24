@@ -25,7 +25,7 @@ export class SceneRaytracing {
         for (let i = 0; i < this.spheres.length; i++)
             this.triangles[i] = this.generateTriangle();
 
-        this.camera = new Camera([0.0, 0.0, 0.0], 90, 0);
+        this.camera = new Camera([0.0, 0.0, 0.0], 0, 90);
 
         this.buildBVH();
     }
@@ -127,8 +127,8 @@ export class SceneRaytracing {
     }
 
     spinCamera(dx: number, dy: number) {
-        this.camera.eulers[2] += dx;
-        this.camera.eulers[2] %= 360;
+        this.camera.eulers[0] += dx;
+        this.camera.eulers[0] %= 360;
 
         this.camera.eulers[1] += dy;
         this.camera.eulers[1] = clamp(this.camera.eulers[1], -89, 89);
