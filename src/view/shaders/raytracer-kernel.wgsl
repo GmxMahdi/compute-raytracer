@@ -64,7 +64,7 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
 
     var ray: Ray;
     ray.direction = normalize(forwards + horizontalCoefficient * right + verticalCoefficient * up);
-    ray.origin = vec3<f32>(0.0, 0.0, 0.0);
+    ray.origin = scene.cameraPos;
 
     var pixelColor: vec3<f32> = rayColor(ray);
 
@@ -72,9 +72,9 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
 }
 
 fn rayColor(ray: Ray) -> vec3<f32> {
-    var color: vec3<f32> = vec3(0.0);
+    var color: vec3<f32> = vec3(0.0, 0.0, 0.0);
 
-    var nearestHit: f32 = 9999.0;
+    var nearestHit: f32 = 9999;
     var hasHit: bool = false;
     var renderState: RenderState;
 
@@ -123,9 +123,10 @@ fn rayColor(ray: Ray) -> vec3<f32> {
         }
         else {
             // Perform collison tests inside node
-            for (var i: u32 = 0; i < u32(sphereCount); i++) {
+            for (var i: u32 = 0; i < sphereCount; i++) {
                 var newRenderState: RenderState = hitSphere(
-                    ray, objects.spheres[u32(sphereLookup.sphereIndices[i + contents])], 
+                    ray, 
+                    objects.spheres[u32(sphereLookup.sphereIndices[i + contents])], 
                     0.001, nearestHit, renderState
                 );
 
@@ -162,7 +163,7 @@ fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldRenderState: Ren
     var renderState: RenderState;
     renderState.color = oldRenderState.color;
 
-    if (discriminant > 0) {
+    if (discriminant > 0.0) {
         let t: f32 = (-b -sqrt(discriminant)) / (2 * a);
         if (t > tMin && t < tMax) {
             renderState.t = t;
@@ -187,7 +188,7 @@ fn hitAABB(ray: Ray, node: Node) -> f32 {
     var t_max: f32 = max(max(tMax.x, tMax.y), tMax.z);
 
     if (t_min > t_max || t_max < 0) {
-        return 9999;
+        return 99999;
     } else {
         return t_min;
     }

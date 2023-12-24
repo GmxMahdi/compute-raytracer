@@ -4,17 +4,34 @@ import { Node } from "./acceleration/node";
 import { vec3 } from "gl-matrix";
 
 export class SceneRaytracing {
-    spheres: Sphere[];
-    camera: Camera;
-
-    nodes: Node[];
-    nodesUsed: number = 0;
-    sphereIndices: number[];
+    spheres: Sphere[]
+    camera: Camera
+    sphereCount: number
+    nodes: Node[]
+    nodesUsed: number = 0
+    sphereIndices: number[]
 
     constructor(sphereCount: number) {
+
+        this.sphereCount = sphereCount;
         this.spheres = new Array(sphereCount);
-        for (let i = 0; i < this.spheres.length; ++i) {
-           this.spheres[i] = this.generateSphere();
+        for (let i = 0; i < this.spheres.length; i++) {
+
+            const center: number[] = [
+                -25 + 50.0 * Math.random(),
+                -25 + 50.0 * Math.random(),
+                +50 + 100.0 * Math.random()
+            ];
+
+            const radius: number = 0.1 + 1.9 * Math.random();
+
+            const color: number[] = [
+                0.3 + 0.7 * Math.random(),
+                0.3 + 0.7 * Math.random(),
+                0.3 + 0.7 * Math.random()
+            ];
+
+            this.spheres[i] = new Sphere(center, radius,color);
         }
 
         this.camera = new Camera([0.0, 0.0, 0.0], 90, 0);
@@ -22,46 +39,28 @@ export class SceneRaytracing {
         this.buildBVH();
     }
 
-    update() {
-    }
+    buildBVH() {
 
-    private generateSphere(): Sphere {
-        const center: number[] = [
-            -25.0 + 50.0 * Math.random(),
-            -25.0 + 50.0 * Math.random(),
-             50.0 + 50.0 * Math.random(),
-       ]
-
-       const radius: number =  0.1 + 1.9 * Math.random();
-
-       const color: number[] = [
-           0.3 + 0.7 * Math.random(),
-           0.3 + 0.7 * Math.random(),
-           0.3 + 0.7 * Math.random(),
-       ];
-
-       return new Sphere(center, radius, color);
-    }
-
-    private buildBVH() {
-        this.sphereIndices = new Array(this.spheres.length);
-        for (let i: number = 0; i < this.spheres.length; ++i)
+        this.sphereIndices = new Array(this.spheres.length)
+        for (var i:number = 0; i < this.sphereCount; i += 1) {
             this.sphereIndices[i] = i;
+        }
 
         this.nodes = new Array(2 * this.spheres.length - 1);
-        for (let i: number = 0; i < this.nodes.length; ++i)
+        for (var i:number = 0; i < 2 * this.spheres.length - 1; i += 1) {
             this.nodes[i] = new Node();
+        }
 
-        let root: Node = this.nodes[0];
+        var root: Node = this.nodes[0];
         root.leftChild = 0;
         root.sphereCount = this.spheres.length;
-        this.nodesUsed += 1;
+        this.nodesUsed += 1
 
         this.updateBounds(0);
         this.subdivide(0);
     }
 
-    private updateBounds(nodeIndex: number) {
+    updateBounds(nodeIndex: number) {
 
         var node: Node = this.nodes[nodeIndex];
         node.minCorner = [999999, 999999, 999999];
@@ -80,7 +79,7 @@ export class SceneRaytracing {
         }
     }
 
-    private subdivide(nodeIndex: number) {
+    subdivide(nodeIndex: number) {
 
         var node: Node = this.nodes[nodeIndex];
 
