@@ -1,14 +1,14 @@
 import { Renderer } from "../view/renderer";
-import { Scene } from "../model/scene";
+import { Scene } from "../model/vertex/scene";
 import { RendererRaytracing } from "../view/renderer-raytracing";
-import { SceneRaytracing } from "../model/scene-raytracing";
+import { SceneRaytracing } from "../model/raycast/scene-raytracing";
 
 export class App {
 
     canvas: HTMLCanvasElement;
     renderer: RendererRaytracing;
     scene: SceneRaytracing;
-    nbSpheres: number = 30;
+    nbSpheres: number = 10;
 
     fpsLabel: HTMLElement;
     sphereCountLabel: HTMLElement;

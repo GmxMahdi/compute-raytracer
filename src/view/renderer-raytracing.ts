@@ -1,4 +1,4 @@
-import { SceneRaytracing } from '../model/scene-raytracing';
+import { SceneRaytracing } from '../model/raycast/scene-raytracing';
 import { CubemapMaterial } from './cubemap-material';
 import shaderRaytracerKernel from './shaders/raytracer-kernel.wgsl?raw';
 import shaderScreen from './shaders/screen-shader.wgsl?raw';
@@ -29,6 +29,7 @@ export class RendererRaytracing {
     sampler: GPUSampler;
     sceneParameters: GPUBuffer;
     sphereBuffer: GPUBuffer;
+    triangleBuffer: GPUBuffer;
     skyboxMaterial : CubemapMaterial;
     
     nodeBuffer: GPUBuffer;
@@ -112,6 +113,11 @@ export class RendererRaytracing {
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
         });
 
+        this.triangleBuffer = this.device.createBuffer({
+            size: 64 * this.scene.sphereCount,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        })
+
         this.nodeBuffer = this.device.createBuffer({
             size: 32 * this.scene.nodesUsed,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
@@ -125,7 +131,7 @@ export class RendererRaytracing {
     }
 
     updateScene() {
-        const maxBounces: number = 4;
+        const maxBounces: number = 15;
         this.device.queue.writeBuffer(
             this.sceneParameters, 0,
             new Float32Array([
@@ -147,18 +153,34 @@ export class RendererRaytracing {
                 this.scene.spheres.length
             ]));
         
-        const sphereData = new Float32Array(8 * this.scene.sphereCount);
-        for (let i = 0; i < this.scene.spheres.length; ++i) {
-            sphereData[8 * i + 0] = this.scene.spheres[i].center[0];
-            sphereData[8 * i + 1] = this.scene.spheres[i].center[1];
-            sphereData[8 * i + 2] = this.scene.spheres[i].center[2];
-            sphereData[8 * i + 3] = 0.0;
-            sphereData[8 * i + 4] = this.scene.spheres[i].color[0];
-            sphereData[8 * i + 5] = this.scene.spheres[i].color[1];
-            sphereData[8 * i + 6] = this.scene.spheres[i].color[2];
-            sphereData[8 * i + 7] = this.scene.spheres[i].radius;
+        // const sphereData = new Float32Array(8 * this.scene.sphereCount);
+        // for (let i = 0; i < this.scene.spheres.length; ++i) {
+        //     sphereData[8 * i + 0] = this.scene.spheres[i].center[0];
+        //     sphereData[8 * i + 1] = this.scene.spheres[i].center[1];
+        //     sphereData[8 * i + 2] = this.scene.spheres[i].center[2];
+        //     sphereData[8 * i + 3] = 0.0;
+        //     sphereData[8 * i + 4] = this.scene.spheres[i].color[0];
+        //     sphereData[8 * i + 5] = this.scene.spheres[i].color[1];
+        //     sphereData[8 * i + 6] = this.scene.spheres[i].color[2];
+        //     sphereData[8 * i + 7] = this.scene.spheres[i].radius;
+        // }
+        // this.device.queue.writeBuffer(this.sphereBuffer, 0, sphereData, 0, 8 * this.scene.spheres.length);
+
+        const triangleData: Float32Array = new Float32Array(16 * this.scene.sphereCount);
+        for (let i = 0; i < this.scene.sphereCount; i++) {
+            for (var corner = 0; corner < 3; corner++) {
+                for (var dimension = 0; dimension < 3; dimension++) {
+                    triangleData[16*i + 4 * corner + dimension] = 
+                        this.scene.triangles[i].corners[corner][dimension];
+                }
+                triangleData[16*i + 4 * corner + 3] = 0.0;
+            }
+            for (var channel = 0; channel < 3; channel++) {
+                triangleData[16*i + 12 + channel] = this.scene.triangles[i].color[channel];
+            }
+            triangleData[16*i + 15] = 0.0;
         }
-        this.device.queue.writeBuffer(this.sphereBuffer, 0, sphereData, 0, 8 * this.scene.spheres.length);
+        this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 16 * this.scene.sphereCount);
 
         const nodeData = new Float32Array(8 * this.scene.nodesUsed);
         for (let i = 0; i < this.scene.nodesUsed; ++i) {
@@ -243,7 +265,7 @@ export class RendererRaytracing {
                 {
                     binding: 2,
                     resource: {
-                        buffer: this.sphereBuffer
+                        buffer: this.triangleBuffer
                     }
                 },
                 {

@@ -4,8 +4,15 @@ struct Sphere {
     radius: f32
 }
 
+struct Triangle {
+    cornerA: vec3<f32>,
+    cornerB: vec3<f32>,
+    cornerC: vec3<f32>,
+    color: vec3<f32>
+}
+
 struct ObjectData {
-    spheres: array<Sphere>
+    spheres: array<Triangle>
 }
 
 //// Spacial Acceleration Structure ////
@@ -157,7 +164,7 @@ fn trace(ray: Ray) -> RenderState {
         else {
             // Perform collison tests inside node
             for (var i: u32 = 0; i < sphereCount; i++) {
-                var newRenderState: RenderState = hitSphere(
+                var newRenderState: RenderState = hitTriangle(
                     ray, 
                     objects.spheres[u32(sphereLookup.sphereIndices[i + contents])], 
                     0.001, nearestHit, renderState
@@ -208,6 +215,84 @@ fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldRenderState: Ren
     }
 
     renderState.hit = false;
+    return renderState;
+}
+
+fn hitTriangle(ray: Ray, triangle: Triangle, tMin: f32, tMax: f32, oldRenderState: RenderState) -> RenderState {
+
+    var renderState: RenderState;
+    renderState.hit = false;
+    renderState.color = oldRenderState.color;
+
+    var ab: vec3<f32> = triangle.cornerB - triangle.cornerA;
+    var ac: vec3<f32> = triangle.cornerC - triangle.cornerA;
+    var normal: vec3<f32> = normalize(cross(ab, ac));
+
+    var rayDotTri : f32 = dot(normal, ray.direction);
+    if (rayDotTri > 0.0) {
+        rayDotTri *= -1;
+        normal *= -1;
+    }
+
+    let epsilon = 0.00001;
+
+    // Almost too parallel
+    if (rayDotTri > -epsilon) {
+        return renderState;
+    }
+
+    ///// Cramer's rule /////
+
+    // Determinant
+    var sysMatrix: mat3x3<f32> = mat3x3<f32>(
+        ray.direction,
+        -ab,
+        -ac
+    );
+    let denominator: f32 = determinant(sysMatrix);
+    // If unstable
+    if (abs(denominator) < epsilon) {
+        return renderState;
+    }
+
+    // U
+    sysMatrix = mat3x3<f32>(
+        ray.direction,
+        triangle.cornerA - ray.origin,
+        -ac
+    );
+    let u: f32 = determinant(sysMatrix) / denominator;
+    if (u < 0.0 || u > 1.0) {
+        return renderState;
+    }
+
+    // V
+    sysMatrix = mat3x3<f32>(
+        ray.direction,
+        -ab,
+        triangle.cornerA - ray.origin
+    );
+    let v: f32 = determinant(sysMatrix) / denominator;
+    if (v < 0.0 || u + v > 1.0 ) {
+        return renderState;
+    }
+
+    // T
+    sysMatrix = mat3x3<f32>(
+        triangle.cornerA - ray.origin,
+        -ab,
+        -ac
+    );
+    let t: f32 = determinant(sysMatrix) / denominator;
+    if (t > tMin && t < tMax) {
+        renderState.position = ray.origin + t * ray.direction;
+        renderState.normal = normal;
+        renderState.t = t;
+        renderState.color = triangle.color;
+        renderState.hit = true;
+        return renderState;
+    }
+
     return renderState;
 }
 

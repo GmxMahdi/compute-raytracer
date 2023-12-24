@@ -1,9 +1,9 @@
 import { Triangle } from "./triangle";
 import { Quad } from "./quad";
-import { Camera } from "./camera";
+import { Camera } from "../camera";
 import { vec3, mat4 } from "gl-matrix";
-import { clamp } from "../utils/more-math";
-import { ObjectTypes, RenderData } from "../definitions/definitions";
+import { clamp } from "../../utils/more-math";
+import { ObjectTypes, RenderData } from "../../definitions/definitions";
 import { Statue } from "./statue";
 
 export class Scene {

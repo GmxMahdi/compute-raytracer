@@ -1,5 +1,5 @@
 import {vec3, mat4} from 'gl-matrix';
-import { deg2rad } from '../utils/more-math';
+import { deg2rad } from '../../utils/more-math';
 
 export class Statue {
     position: vec3;
