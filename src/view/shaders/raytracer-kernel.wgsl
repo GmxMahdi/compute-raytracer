@@ -117,16 +117,18 @@ fn trace(ray: Ray) -> RenderState {
 
     // Setup BVH
     var node: Node = tree.nodes[0];
-    var stack: array<Node, STACK_SIZE>;
+    var stack: array<u32, STACK_SIZE>;
     var stackLocation: u32 = 0;
 
     while (true) {
         var sphereCount: u32 = u32(node.sphereCount);
-        var contents: u32 = u32(node.leftChild);
+        var nodeIndex: u32 = u32(node.leftChild);
 
         if (sphereCount == 0) {
-            var child1: Node = tree.nodes[contents];
-            var child2: Node = tree.nodes[contents + 1];
+            var iChild1: u32 = nodeIndex;
+            var iChild2: u32 = nodeIndex + 1;
+            var child1: Node = tree.nodes[nodeIndex];
+            var child2: Node = tree.nodes[nodeIndex + 1];
 
             var distance1: f32 = hitAABB(ray, child1);
             var distance2: f32 = hitAABB(ray, child2);
@@ -140,6 +142,9 @@ fn trace(ray: Ray) -> RenderState {
                 var tempChild: Node = child1;
                 child1 = child2;
                 child2 = tempChild;
+
+                iChild1 = nodeIndex + 1;
+                iChild2 = nodeIndex;
             }
 
             if (distance1 > nearestHit) {
@@ -148,13 +153,13 @@ fn trace(ray: Ray) -> RenderState {
                 }
                 else {
                     stackLocation -= 1;
-                    node = stack[stackLocation];
+                    node = tree.nodes[stack[stackLocation]];
                 }
             } 
             else {
                 node = child1;
                 if (distance2 < nearestHit) {
-                    stack[stackLocation] = child2;
+                    stack[stackLocation] = iChild2;
                     stackLocation += 1;
                     if (stackLocation >= STACK_SIZE) {
                         stackLocation = STACK_SIZE -1;
@@ -167,7 +172,7 @@ fn trace(ray: Ray) -> RenderState {
             for (var i: u32 = 0; i < sphereCount; i++) {
                 var newRenderState: RenderState = hitTriangle(
                     ray, 
-                    objects.spheres[u32(sphereLookup.sphereIndices[i + contents])], 
+                    objects.spheres[u32(sphereLookup.sphereIndices[i + nodeIndex])], 
                     0.001, nearestHit, renderState
                 );
 
@@ -182,7 +187,7 @@ fn trace(ray: Ray) -> RenderState {
             }
             else {
                 stackLocation -= 1;
-                node = stack[stackLocation];
+                node = tree.nodes[stack[stackLocation]];
             }
         }
     }
