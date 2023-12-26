@@ -13,19 +13,10 @@ export class ObjectMesh {
     triangles: Triangle[];
     color: vec3;
 
-    private minX = 0;
-    private minY = 0;
-    private minZ = 0;
+    private mins: vec3 = [0, 0, 0];
+    private maxs: vec3 = [0, 0, 0];
+    private offsets: vec3 = [0, 0, 0];
 
-    private maxX = 0;
-    private maxY = 0;
-    private maxZ = 0;
-
-    private offsetX = 0;
-    private offsetY = 0;
-    private offsetZ = 0;
-
-    private invertYZ = false;
     private alignBottom = false;
     private scale : number = 1;
 
@@ -50,7 +41,6 @@ export class ObjectMesh {
         this.color = color;
 
         // Alignment settings
-        this.invertYZ = invertYZ
         this.alignBottom = alignBottom;
         this.scale = scale;
         if (invertYZ) {
@@ -82,9 +72,9 @@ export class ObjectMesh {
     private readVertexLine(line: string) {
         const components = line.split(' ');
         const newVertex: vec3 = [
-            (parseFloat(components[1]) - this.offsetX) * this.scale,
-            (parseFloat(components[2]) - this.offsetY) * this.scale,
-            (parseFloat(components[3]) - this.offsetZ) * this.scale,
+            (parseFloat(components[1 + this.xIndex]) - this.offsets[this.xIndex]) * this.scale,
+            (parseFloat(components[1 + this.yIndex]) - this.offsets[this.yIndex]) * this.scale,
+            (parseFloat(components[1 + this.zIndex]) - this.offsets[this.zIndex]) * this.scale,
         ]
         this.v.push(newVertex);
     }
@@ -101,9 +91,9 @@ export class ObjectMesh {
     private readNormalLine(line: string) {
         const components = line.split(' ');
         const newNormal: vec3 = [
-            parseFloat(components[1]),
-            parseFloat(components[2]),
-            parseFloat(components[3]),
+            parseFloat(components[1 + this.xIndex]),
+            parseFloat(components[1 + this.yIndex]),
+            parseFloat(components[1 + this.zIndex]),
         ]
         this.vn.push(newNormal);
     }
@@ -138,12 +128,12 @@ export class ObjectMesh {
         for (const line of lines) {
             if (line[0] === 'v' && line[1] === ' ') {
                 const components = line.split(' ');
-                this.minX = parseFloat(components[1]);
-                this.minY = parseFloat(components[2]);
-                this.minZ = parseFloat(components[3]);
-                this.maxX = this.minX;
-                this.maxY = this.minZ;
-                this.maxZ = this.maxZ;
+                this.mins = [
+                    parseFloat(components[1]),
+                    parseFloat(components[2]),
+                    parseFloat(components[3])
+                ]
+                this.maxs = vec3.clone(this.mins);
                 break;
             }
         }
@@ -151,23 +141,22 @@ export class ObjectMesh {
         for (const line of lines) {
             if (line[0] === 'v' && line[1] === ' ') {
                 const components = line.split(' ');
-                let x = parseFloat(components[1]);
-                let y = parseFloat(components[2]);
-                let z = parseFloat(components[3]);
-                if (x < this.minX) this.minX = x;
-                if (y < this.minY) this.minY = y;
-                if (z < this.minZ) this.minZ = z;
-                if (x > this.maxX) this.maxX = x;
-                if (y > this.maxY) this.maxY = y;
-                if (z > this.maxZ) this.maxZ = z;
+                let x = parseFloat(components[1 + this.xIndex]);
+                let y = parseFloat(components[1 + this.yIndex]);
+                let z = parseFloat(components[1 + this.zIndex]);
+
+                if (x < this.mins[this.xIndex]) this.mins[this.xIndex] = x;
+                if (y < this.mins[this.yIndex]) this.mins[this.yIndex] = y;
+                if (z < this.mins[this.zIndex]) this.mins[this.zIndex] = z;
+                if (x > this.maxs[this.xIndex]) this.maxs[this.xIndex] = x;
+                if (y > this.maxs[this.yIndex]) this.maxs[this.yIndex] = y;
+                if (z > this.maxs[this.zIndex]) this.maxs[this.zIndex] = z;
             }
         }
-
-        this.offsetX = this.minX + (this.maxX - this.minX) / 2;
-        this.offsetY = this.minY + (this.maxY - this.minY) / 2;
-        this.offsetZ = this.minZ + (this.maxZ - this.minZ) / 2;
-
-        if (this.alignBottom &&  !this.invertYZ) this.offsetY = this.minY;
-        if (this.alignBottom &&  this.invertYZ) this.offsetZ = this.minZ; 
+        
+        // offset = min + (max - min) / 2 = min/2 + max/2
+        this.offsets = vec3.add(vec3.create(), this.mins, this.maxs);
+        vec3.div(this.offsets, this.offsets, [2, 2, 2]);
+        if (this.alignBottom) this.offsets[this.zIndex] = this.mins[this.zIndex]; 
     }
 }

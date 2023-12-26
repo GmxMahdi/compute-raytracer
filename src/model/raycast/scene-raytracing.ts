@@ -5,13 +5,13 @@ import { vec3 } from "gl-matrix";
 import { clamp } from "../../utils/more-math";
 import { Triangle } from "./triangle";
 import { ObjectMesh } from "../../view/obj-mesh";
-import urlCatObj from "../../models/cat.obj?url";
+import urlCatObj from "../../models/statue.obj?url";
 
 export class SceneRaytracing {
     camera: Camera
 
     spheres: Sphere[];
-    sphereCount: number;
+    triangleCount: number;
     sphereIndices: number[];
     triangles: Triangle[];
 
@@ -53,11 +53,11 @@ export class SceneRaytracing {
     async createScene() {
         this.cat = new ObjectMesh();
         let color: vec3 = [0.8, 0.0, 0.3];
-        await this.cat.initialize(urlCatObj, color, /*invertYZ*/false, /*alignBottom*/true, /*scale*/0.1);
+        await this.cat.initialize(urlCatObj, color, /*invertYZ*/true, /*alignBottom*/true, /*scale*/1);
 
         this.triangles = [];
         for (const triangle of this.cat.triangles) this.triangles.push(triangle);
-        this.sphereCount = this.triangles.length;
+        this.triangleCount = this.triangles.length;
 
         console.log('there is ', this.triangles.length, ' triangles');
 
@@ -84,44 +84,44 @@ export class SceneRaytracing {
     }
 
     private generateFlatTriangle() {
-        const center: vec3 = [
-            -20 + 40.0 * Math.random(),
-            -20 + 40.0 * Math.random(),
-            +25 + 20.0 * Math.random()
-        ];
+        // const center: vec3 = [
+        //     -20 + 40.0 * Math.random(),
+        //     -20 + 40.0 * Math.random(),
+        //     +25 + 20.0 * Math.random()
+        // ];
 
-        let axis = Math.floor(Math.random() * 3);
-        const offsets: vec3[] = 
-        [
-            [
-                3 + 6 * Math.random(),
-                -3 + 6 * Math.random(),
-                -3 + 6 * Math.random()
-            ],
-            [
-                -3 + 6 * Math.random(),
-                3 + 6 * Math.random(),
-                -3 + 6 * Math.random()
-            ],
-            [
-                -3 + 6 * Math.random(),
-                -3 + 6 * Math.random(),
-                3 + 6 * Math.random()
-            ]
-        ];
+        // let axis = Math.floor(Math.random() * 3);
+        // const offsets: vec3[] = 
+        // [
+        //     [
+        //         3 + 6 * Math.random(),
+        //         -3 + 6 * Math.random(),
+        //         -3 + 6 * Math.random()
+        //     ],
+        //     [
+        //         -3 + 6 * Math.random(),
+        //         3 + 6 * Math.random(),
+        //         -3 + 6 * Math.random()
+        //     ],
+        //     [
+        //         -3 + 6 * Math.random(),
+        //         -3 + 6 * Math.random(),
+        //         3 + 6 * Math.random()
+        //     ]
+        // ];
 
-        offsets[0][axis] = 0;
-        offsets[1][axis] = 0;
-        offsets[2][axis] = 0;
+        // offsets[0][axis] = 0;
+        // offsets[1][axis] = 0;
+        // offsets[2][axis] = 0;
 
 
-        const color: vec3 = [
-            Math.random(),
-            Math.random(),
-            Math.random()
-        ];
+        // const color: vec3 = [
+        //     Math.random(),
+        //     Math.random(),
+        //     Math.random()
+        // ];
 
-        return new Triangle(center, offsets, color);
+        // return new Triangle(center, offsets, color);
     }
 
     private generateTriangle() {
@@ -163,7 +163,7 @@ export class SceneRaytracing {
     private buildBVH() {
 
         this.sphereIndices = new Array(this.triangles.length)
-        for (var i:number = 0; i < this.sphereCount; i += 1) {
+        for (var i:number = 0; i < this.triangleCount; i += 1) {
             this.sphereIndices[i] = i;
         }
 
@@ -182,10 +182,10 @@ export class SceneRaytracing {
     }
 
     private updateBounds(nodeIndex: number) {
-
+        const DEFAULT = 999999;
         var node: Node = this.nodes[nodeIndex];
-        node.minCorner = [999999, 999999, 999999];
-        node.maxCorner = [-999999, -999999, -999999];
+        node.minCorner = [DEFAULT, DEFAULT, DEFAULT];
+        node.maxCorner = [-DEFAULT, -DEFAULT, -DEFAULT];
 
         for (var i: number = 0; i < node.sphereCount; i += 1) {
             // const sphere: Sphere = this.spheres[this.sphereIndices[node.leftChild + i]];

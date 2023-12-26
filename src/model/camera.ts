@@ -57,12 +57,6 @@ export class Camera {
 
         this.view = mat4.create();
         mat4.lookAt(this.view, this.position, target, this.up);
-
-        console.log(
-            Math.round(this.forwards[0]*100)/100,
-            Math.round(this.forwards[1]*100)/100,
-            Math.round(this.forwards[2]*100)/100,
-        );
     }
 
     get_view(): mat4 {

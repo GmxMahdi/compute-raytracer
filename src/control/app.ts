@@ -39,7 +39,7 @@ export class App {
 
         this.fpsLabel = document.getElementById('current-fps');
         this.sphereCountLabel = document.getElementById('sphere-count');
-        this.sphereCountLabel.innerText = this.nbSpheres.toString();
+        this.sphereCountLabel.innerText = this.scene.triangles.length.toString();
         this.keyLabel = document.getElementById('current-key');
         this.mouseXLabel = document.getElementById('mouse-x');
         this.mouseYLabel = document.getElementById('mouse-y');
