@@ -2,7 +2,6 @@ import { Camera } from "../camera";
 import { Sphere } from "../raycast/sphere";
 import { Node } from "../acceleration/node";
 import { vec3 } from "gl-matrix";
-import { clamp } from "../../utils/more-math";
 import { Triangle } from "./triangle";
 import { ObjectMesh } from "../../view/obj-mesh";
 import urlCatObj from "../../models/mousey/mousey.obj?url";

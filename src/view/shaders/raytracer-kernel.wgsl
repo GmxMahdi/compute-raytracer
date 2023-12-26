@@ -62,6 +62,8 @@ struct RenderState {
 @group(0) @binding(5) var skyTex: texture_cube<f32>;
 @group(0) @binding(6) var skyTexSamp: sampler;
 
+const STACK_SIZE: u32 = 16;
+
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     let screenSize: vec2<u32> = textureDimensions(colorBuffer);
@@ -94,7 +96,7 @@ fn rayColor(ray: Ray) -> vec3<f32> {
     let bounces: u32 = u32(scene.maxBounces);
     for (var bounce: u32 = 0; bounce < bounces; bounce++) {
         result = trace(tempRay);
-        color = color * result.color;
+        color *= result.color;
 
         if (!result.hit) {
             break;
@@ -104,10 +106,6 @@ fn rayColor(ray: Ray) -> vec3<f32> {
         tempRay.direction = normalize(reflect(tempRay.direction, result.normal));
     }
 
-
-    if (result.hit) {
-        color = vec3(0.0);
-    }
     return color;
 }
 
@@ -119,7 +117,7 @@ fn trace(ray: Ray) -> RenderState {
 
     // Setup BVH
     var node: Node = tree.nodes[0];
-    var stack: array<Node, 15>;
+    var stack: array<Node, STACK_SIZE>;
     var stackLocation: u32 = 0;
 
     while (true) {
@@ -158,6 +156,9 @@ fn trace(ray: Ray) -> RenderState {
                 if (distance2 < nearestHit) {
                     stack[stackLocation] = child2;
                     stackLocation += 1;
+                    if (stackLocation >= STACK_SIZE) {
+                        stackLocation = STACK_SIZE -1;
+                    }
                 }
             }
         }
@@ -224,71 +225,33 @@ fn hitTriangle(ray: Ray, triangle: Triangle, tMin: f32, tMax: f32, oldRenderStat
     renderState.hit = false;
     renderState.color = oldRenderState.color;
 
-    var ab: vec3<f32> = triangle.cornerB - triangle.cornerA;
-    var ac: vec3<f32> = triangle.cornerC - triangle.cornerA;
-    var normal: vec3<f32> = normalize(cross(ab, ac));
+    let edge1: vec3<f32> = triangle.cornerB - triangle.cornerA;
+    let edge2: vec3<f32> = triangle.cornerC - triangle.cornerA;
+    let rayCrossEdge2: vec3<f32> = cross(ray.direction, edge2);
+    let det: f32 = dot(edge1, rayCrossEdge2);
 
-    var rayDotTri : f32 = dot(normal, ray.direction);
-    if (rayDotTri > 0.0) {
-        renderState.hit = false;
-        return renderState;
-        // rayDotTri *= -1;
-        // normal *= -1;
-    }
-
-    let epsilon = 0.00001;
-
-    // Almost too parallel
-    if (rayDotTri > -epsilon) {
+    let epsilon: f32 = 0.00001;
+    if (det < epsilon) {
         return renderState;
     }
 
-    ///// Cramer's rule /////
-
-    // Determinant
-    var sysMatrix: mat3x3<f32> = mat3x3<f32>(
-        ray.direction,
-        -ab,
-        -ac
-    );
-    let denominator: f32 = determinant(sysMatrix);
-    // If unstable
-    if (abs(denominator) < epsilon) {
+    let s: vec3<f32> = ray.origin - triangle.cornerA;
+    let u: f32 = dot(s, rayCrossEdge2);
+    if (u < 0 || u > det) {
         return renderState;
     }
 
-    // U
-    sysMatrix = mat3x3<f32>(
-        ray.direction,
-        triangle.cornerA - ray.origin,
-        -ac
-    );
-    let u: f32 = determinant(sysMatrix) / denominator;
-    if (u < 0.0 || u > 1.0) {
+    let sCrossEdge1: vec3<f32> = cross(s, edge1);
+    let v: f32 = dot(ray.direction, sCrossEdge1);
+    if (v < 0 || u + v > det) {
         return renderState;
     }
 
-    // V
-    sysMatrix = mat3x3<f32>(
-        ray.direction,
-        -ab,
-        triangle.cornerA - ray.origin
-    );
-    let v: f32 = determinant(sysMatrix) / denominator;
-    if (v < 0.0 || u + v > 1.0 ) {
-        return renderState;
-    }
-
-    // T
-    sysMatrix = mat3x3<f32>(
-        triangle.cornerA - ray.origin,
-        -ab,
-        -ac
-    );
-    let t: f32 = determinant(sysMatrix) / denominator;
+    let invDet: f32 = 1.0 / det;
+    let t: f32 = invDet * dot(edge2, sCrossEdge1);
     if (t > tMin && t < tMax) {
         renderState.position = ray.origin + t * ray.direction;
-        renderState.normal = normal;
+        renderState.normal = normalize(cross(edge1, edge2));
         renderState.t = t;
         renderState.color = triangle.color;
         renderState.hit = true;
