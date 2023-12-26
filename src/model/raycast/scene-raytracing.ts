@@ -5,7 +5,7 @@ import { vec3 } from "gl-matrix";
 import { clamp } from "../../utils/more-math";
 import { Triangle } from "./triangle";
 import { ObjectMesh } from "../../view/obj-mesh";
-import urlCatObj from "../../models/statue.obj?url";
+import urlCatObj from "../../models/mousey/mousey.obj?url";
 
 export class SceneRaytracing {
     camera: Camera
@@ -52,8 +52,8 @@ export class SceneRaytracing {
 
     async createScene() {
         this.cat = new ObjectMesh();
-        let color: vec3 = [0.8, 0.0, 0.3];
-        await this.cat.initialize(urlCatObj, color, /*invertYZ*/true, /*alignBottom*/true, /*scale*/1);
+        let color: vec3 = [0.9, 0.7, 0.78];
+        await this.cat.initialize(urlCatObj, color, /*invertYZ*/false, /*alignBottom*/true, /*scale*/0.1);
 
         this.triangles = [];
         for (const triangle of this.cat.triangles) this.triangles.push(triangle);
