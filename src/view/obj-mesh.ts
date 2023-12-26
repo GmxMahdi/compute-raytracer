@@ -72,10 +72,13 @@ export class ObjectMesh {
     private readVertexLine(line: string) {
         const components = line.split(' ');
         const newVertex: vec3 = [
-            (parseFloat(components[1 + this.xIndex]) - this.offsets[this.xIndex]) * this.scale,
-            (parseFloat(components[1 + this.yIndex]) - this.offsets[this.yIndex]) * this.scale,
-            (parseFloat(components[1 + this.zIndex]) - this.offsets[this.zIndex]) * this.scale,
+            parseFloat(components[1 + this.xIndex]),
+            parseFloat(components[1 + this.yIndex]),
+            parseFloat(components[1 + this.zIndex]),
         ]
+        vec3.subtract(newVertex, newVertex, this.offsets);
+        vec3.mul(newVertex, newVertex, [this.scale, this.scale, this.scale]);
+
         this.v.push(newVertex);
     }
 
@@ -157,6 +160,6 @@ export class ObjectMesh {
         // offset = min + (max - min) / 2 = min/2 + max/2
         this.offsets = vec3.add(vec3.create(), this.mins, this.maxs);
         vec3.div(this.offsets, this.offsets, [2, 2, 2]);
-        if (this.alignBottom) this.offsets[this.zIndex] = this.mins[this.zIndex]; 
+        if (this.alignBottom) this.offsets[this.yIndex] = this.mins[this.yIndex]; 
     }
 }

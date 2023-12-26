@@ -109,12 +109,12 @@ export class RendererRaytracing {
         });
 
         this.sphereBuffer = this.device.createBuffer({
-            size: 32 * this.scene.sphereCount,
+            size: 32 * this.scene.triangleCount,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
         });
 
         this.triangleBuffer = this.device.createBuffer({
-            size: 64 * this.scene.sphereCount,
+            size: 64 * this.scene.triangleCount,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         })
 
@@ -124,7 +124,7 @@ export class RendererRaytracing {
         });
 
         this.sphereIndexBuffer = this.device.createBuffer({
-            size: 4 * this.scene.sphereCount,
+            size: 4 * this.scene.triangleCount,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
         });
 
@@ -166,8 +166,8 @@ export class RendererRaytracing {
         // }
         // this.device.queue.writeBuffer(this.sphereBuffer, 0, sphereData, 0, 8 * this.scene.spheres.length);
 
-        const triangleData: Float32Array = new Float32Array(16 * this.scene.sphereCount);
-        for (let i = 0; i < this.scene.sphereCount; i++) {
+        const triangleData: Float32Array = new Float32Array(16 * this.scene.triangleCount);
+        for (let i = 0; i < this.scene.triangleCount; i++) {
             for (var corner = 0; corner < 3; corner++) {
                 for (var dimension = 0; dimension < 3; dimension++) {
                     triangleData[16*i + 4 * corner + dimension] = 
@@ -180,7 +180,7 @@ export class RendererRaytracing {
             }
             triangleData[16*i + 15] = 0.0;
         }
-        this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 16 * this.scene.sphereCount);
+        this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 16 * this.scene.triangleCount);
 
         const nodeData = new Float32Array(8 * this.scene.nodesUsed);
         for (let i = 0; i < this.scene.nodesUsed; ++i) {
@@ -195,11 +195,11 @@ export class RendererRaytracing {
         }
         this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeData, 0, 8 * this.scene.nodesUsed);
 
-        const sphereIndexData = new Float32Array(this.scene.sphereCount);
+        const sphereIndexData = new Float32Array(this.scene.triangleCount);
         for (let i = 0; i < this.scene.triangles.length; ++i) {
             sphereIndexData[i] = this.scene.sphereIndices[i];
         }
-        this.device.queue.writeBuffer(this.sphereIndexBuffer, 0, sphereIndexData, 0, this.scene.sphereCount);
+        this.device.queue.writeBuffer(this.sphereIndexBuffer, 0, sphereIndexData, 0, this.scene.triangleCount);
     }
 
     async makePipeline() {

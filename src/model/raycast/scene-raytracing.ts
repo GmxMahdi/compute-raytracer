@@ -47,7 +47,7 @@ export class SceneRaytracing {
         //     [0.5, 0.5, 0.5]
         // )
 
-        this.camera = new Camera([0.0, 0.0, 0.0], 90, 0);
+        this.camera = new Camera([-2.0, 0.0, 0.0], 90, 0);
     }
 
     async createScene() {
