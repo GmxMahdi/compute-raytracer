@@ -29,14 +29,17 @@ export class App {
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
+    }
+
+    async initialize() {
         this.scene = new SceneRaytracing(this.nbSpheres);
-        this.renderer = new RendererRaytracing(canvas, this.scene);
+        await this.scene.createScene();
+
+        this.renderer = new RendererRaytracing(this.canvas, this.scene);
 
         this.fpsLabel = document.getElementById('current-fps');
-        
         this.sphereCountLabel = document.getElementById('sphere-count');
         this.sphereCountLabel.innerText = this.nbSpheres.toString();
-
         this.keyLabel = document.getElementById('current-key');
         this.mouseXLabel = document.getElementById('mouse-x');
         this.mouseYLabel = document.getElementById('mouse-y');
@@ -44,15 +47,12 @@ export class App {
         document.addEventListener('keydown', (event: KeyboardEvent) => this.handleKeyDownEvent(event));
         document.addEventListener('keyup', (event: KeyboardEvent) => this.handleKeyUpEvent(event));
         document.addEventListener("pointerlockchange", () => this.handlePointerLockChange(), false);
-        canvas.onclick = () => {
+        this.canvas.onclick = () => {
             if (document.pointerLockElement) return;
-            canvas.requestPointerLock();
+            this.canvas.requestPointerLock();
         }
-        canvas.addEventListener('mousemove', (event: MouseEvent) => this.handleMouseMove(event));
+        this.canvas.addEventListener('mousemove', (event: MouseEvent) => this.handleMouseMove(event));
 
-    }
-
-    async initialize() {
         await this.renderer.initialize();
     }
 
@@ -65,7 +65,7 @@ export class App {
         let running: boolean = true;
 
         this.updateDeltaTime(timeStamp);
-        this.scene.moveCamera(this.forwardsAmount, this.rightAmount);
+        this.scene.camera.move(this.forwardsAmount, this.rightAmount);
 
         this.renderer.render();
 
@@ -115,7 +115,7 @@ export class App {
         if (this.isControlsLocked) return;
         this.mouseXLabel.innerText = event.movementX.toString();
         this.mouseYLabel.innerText = event.movementY.toString();
-        this.scene.spinCamera(event.movementX * this.sensitivity, event.movementY * this.sensitivity);
+        this.scene.camera.spin(event.movementX * this.sensitivity, event.movementY * this.sensitivity);
     }
 
     private handlePointerLockChange() {

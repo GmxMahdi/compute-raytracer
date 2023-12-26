@@ -4,6 +4,8 @@ import { Node } from "../acceleration/node";
 import { vec3 } from "gl-matrix";
 import { clamp } from "../../utils/more-math";
 import { Triangle } from "./triangle";
+import { ObjectMesh } from "../../view/obj-mesh";
+import urlCatObj from "../../models/cat.obj?url";
 
 export class SceneRaytracing {
     camera: Camera
@@ -11,21 +13,53 @@ export class SceneRaytracing {
     spheres: Sphere[];
     sphereCount: number;
     sphereIndices: number[];
-
     triangles: Triangle[];
+
+    cat: ObjectMesh;
 
     nodes: Node[];
     nodesUsed: number = 0;
 
     constructor(sphereCount: number) {
 
-        this.sphereCount = sphereCount;
-        this.spheres = new Array(sphereCount);
-        this.triangles = new Array(sphereCount);
-        for (let i = 0; i < this.spheres.length; i++)
-            this.triangles[i] = this.generateTriangle();
+        // this.sphereCount = sphereCount;
+        // this.spheres = new Array(sphereCount);
+        // this.triangles = new Array(sphereCount);
+        // for (let i = 0; i < this.spheres.length; i++)
+        //     this.triangles[i] = this.generateTriangle();
+        // this.triangles[sphereCount - 1] = new Triangle(
+        //     [0, -2, 0],
+        //     [
+        //         [0, 0, 0],
+        //         [0, 0, 10],
+        //         [10, 0, 0]
+        //     ],
+        //     [0.5, 0.5, 0.5]
+        // )
 
-        this.camera = new Camera([0.0, 0.0, 0.0], 0, 90);
+        // this.triangles[sphereCount - 2] = new Triangle(
+        //     [0, -2, 0],
+        //     [
+        //         [10, 0, 10],
+        //         [0, 0, 10],
+        //         [10, 0, 0]
+        //     ],
+        //     [0.5, 0.5, 0.5]
+        // )
+
+        this.camera = new Camera([0.0, 0.0, 0.0], 90, 0);
+    }
+
+    async createScene() {
+        this.cat = new ObjectMesh();
+        let color: vec3 = [0.8, 0.0, 0.3];
+        await this.cat.initialize(urlCatObj, color, /*invertYZ*/false, /*alignBottom*/true, /*scale*/0.1);
+
+        this.triangles = [];
+        for (const triangle of this.cat.triangles) this.triangles.push(triangle);
+        this.sphereCount = this.triangles.length;
+
+        console.log('there is ', this.triangles.length, ' triangles');
 
         this.buildBVH();
     }
@@ -126,40 +160,21 @@ export class SceneRaytracing {
         return new Triangle(center, offsets, color);
     }
 
-    spinCamera(dx: number, dy: number) {
-        this.camera.eulers[0] += dx;
-        this.camera.eulers[0] %= 360;
-
-        this.camera.eulers[1] += dy;
-        this.camera.eulers[1] = clamp(this.camera.eulers[1], -89, 89);
-        this.camera.update();
-    }
-
-    moveCamera(forwardsAmount: number, rightAmount: number) {
-        vec3.scaleAndAdd(
-            this.camera.position, this.camera.position,
-            this.camera.forwards, forwardsAmount);
-            
-        vec3.scaleAndAdd(
-            this.camera.position, this.camera.position,
-            this.camera.right, rightAmount);  
-    }
-
     private buildBVH() {
 
-        this.sphereIndices = new Array(this.spheres.length)
+        this.sphereIndices = new Array(this.triangles.length)
         for (var i:number = 0; i < this.sphereCount; i += 1) {
             this.sphereIndices[i] = i;
         }
 
-        this.nodes = new Array(2 * this.spheres.length - 1);
-        for (var i:number = 0; i < 2 * this.spheres.length - 1; i += 1) {
+        this.nodes = new Array(2 * this.triangles.length - 1);
+        for (var i:number = 0; i < 2 * this.triangles.length - 1; i += 1) {
             this.nodes[i] = new Node();
         }
 
         var root: Node = this.nodes[0];
         root.leftChild = 0;
-        root.sphereCount = this.spheres.length;
+        root.sphereCount = this.triangles.length;
         this.nodesUsed += 1
 
         this.updateBounds(0);

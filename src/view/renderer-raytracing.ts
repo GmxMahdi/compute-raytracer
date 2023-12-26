@@ -2,7 +2,7 @@ import { SceneRaytracing } from '../model/raycast/scene-raytracing';
 import { CubemapMaterial } from './cubemap-material';
 import shaderRaytracerKernel from './shaders/raytracer-kernel.wgsl?raw';
 import shaderScreen from './shaders/screen-shader.wgsl?raw';
-import urlSkybox from '../images/space-skybox.png';
+import urlSkybox from '../images/daylight-skybox.png';
 
 
 
@@ -131,7 +131,7 @@ export class RendererRaytracing {
     }
 
     updateScene() {
-        const maxBounces: number = 15;
+        const maxBounces: number = 10;
         this.device.queue.writeBuffer(
             this.sceneParameters, 0,
             new Float32Array([
@@ -150,7 +150,7 @@ export class RendererRaytracing {
                 this.scene.camera.up[0],
                 this.scene.camera.up[1],
                 this.scene.camera.up[2],
-                this.scene.spheres.length
+                this.scene.triangles.length
             ]));
         
         // const sphereData = new Float32Array(8 * this.scene.sphereCount);
@@ -196,7 +196,7 @@ export class RendererRaytracing {
         this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeData, 0, 8 * this.scene.nodesUsed);
 
         const sphereIndexData = new Float32Array(this.scene.sphereCount);
-        for (let i = 0; i < this.scene.spheres.length; ++i) {
+        for (let i = 0; i < this.scene.triangles.length; ++i) {
             sphereIndexData[i] = this.scene.sphereIndices[i];
         }
         this.device.queue.writeBuffer(this.sphereIndexBuffer, 0, sphereIndexData, 0, this.scene.sphereCount);

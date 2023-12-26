@@ -67,8 +67,8 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     let screenSize: vec2<u32> = textureDimensions(colorBuffer);
     let screenPos: vec2<i32> = vec2<i32>(i32(globalInvocationID.x), i32(globalInvocationID.y));
 
-    let horizontalCoefficient: f32 =  (f32(screenPos.x) - f32(screenSize.x) / 2) / f32(screenSize.x);
-    let verticalCoefficient: f32 =  (f32(screenPos.y) - f32(screenSize.y) / 2) / f32(screenSize.x);
+    let horizontalCoefficient: f32 =  (f32(screenPos.x) - f32(screenSize.x) / 2) / f32(screenSize.x) * 2;
+    let verticalCoefficient: f32 =  (f32(screenPos.y) - f32(screenSize.y) / 2) / f32(screenSize.x) * 2;
 
     let forwards: vec3<f32> = scene.cameraForwards;
     let right: vec3<f32> = scene.cameraRight;
