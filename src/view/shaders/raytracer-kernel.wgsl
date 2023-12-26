@@ -230,8 +230,10 @@ fn hitTriangle(ray: Ray, triangle: Triangle, tMin: f32, tMax: f32, oldRenderStat
 
     var rayDotTri : f32 = dot(normal, ray.direction);
     if (rayDotTri > 0.0) {
-        rayDotTri *= -1;
-        normal *= -1;
+        renderState.hit = false;
+        return renderState;
+        // rayDotTri *= -1;
+        // normal *= -1;
     }
 
     let epsilon = 0.00001;
