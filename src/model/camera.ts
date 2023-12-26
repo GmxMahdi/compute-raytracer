@@ -21,7 +21,7 @@ export class Camera {
     }
 
     spin(dx: number, dy: number) {
-        this.eulers[0] -= dx;
+        this.eulers[0] += dx;
         this.eulers[0] %= 360;
 
         this.eulers[1] += dy;
@@ -46,7 +46,7 @@ export class Camera {
             Math.sin(deg2rad(this.eulers[0])) * Math.sin(deg2rad(this.eulers[1])),
         );
 
-        vec3.cross(this.right, this.forwards, [0, -1, 0]);
+        vec3.cross(this.right, this.forwards, [0, 1, 0]);
         vec3.normalize(this.right, this.right);
 
         vec3.cross(this.up, this.right, this.forwards);
