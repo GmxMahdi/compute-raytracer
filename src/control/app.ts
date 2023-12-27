@@ -68,11 +68,10 @@ export class App {
         this.scene.update();
         this.scene.camera.move(this.forwardsAmount, this.rightAmount);
 
-        this.renderer.render();
-
-        if (running) {
-            requestAnimationFrame(this._run);
-        }
+        this.renderer.render().then(() => {
+            if (running)
+                requestAnimationFrame(this._run);
+        });
     }
 
     private updateDeltaTime(timeStamp: number) {

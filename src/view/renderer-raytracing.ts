@@ -369,7 +369,7 @@ export class RendererRaytracing {
         })
     }
 
-    render() {
+    async render() {
         const performanceStartTime = performance.now();
 
         this.updateScene();
@@ -402,9 +402,8 @@ export class RendererRaytracing {
     
         this.device.queue.submit([commandEncoder.finish()]);
 
-        this.device.queue.onSubmittedWorkDone().then(() => {
-            let performanceTimeEnd = performance.now();
-            document.getElementById('render-time').innerText = (performanceTimeEnd - performanceStartTime).toString() + 'ms';
-        })
+        await this.device.queue.onSubmittedWorkDone();
+        let performanceTimeEnd = performance.now();
+        document.getElementById('render-time').innerText = (performanceTimeEnd - performanceStartTime).toString() + 'ms';
     }
 }
