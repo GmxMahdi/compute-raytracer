@@ -9,8 +9,8 @@ import urlSkybox from '../images/daylight-skybox.png';
 
 export class RendererRaytracing {
 
-    width: number = 1700;
-    height: number = 800;
+    width: number = 900;
+    height: number = 600;
     canvas: HTMLCanvasElement;
 
     dt: number = 0;
@@ -46,9 +46,11 @@ export class RendererRaytracing {
     scene: SceneRaytracing;
     loaded: boolean = false;
 
-    constructor(canvas: HTMLCanvasElement, scene: SceneRaytracing){
+    constructor(canvas: HTMLCanvasElement, width: number, height: number, scene: SceneRaytracing){
         this.scene = scene;
         this.canvas = canvas;
+        this.width = width;
+        this.height = height;
         this.canvas.width = this.width;
         this.canvas.height = this.height;
     }

@@ -269,7 +269,7 @@ fn hitTriangle(ray: Ray, triangle: Triangle, tMin: f32, tMax: f32, oldRenderStat
         
         renderState.position = ray.origin + t * ray.direction;
         let normal: vec3<f32> = (1.0 - u - v) * triangle.normalA + u * triangle.normalB + v * triangle.normalC;
-        //let normal: vec3<f32> = normalize(cross(edge1, edge2))
+        // let normal: vec3<f32> = normalize(cross(edge1, edge2));
         renderState.normal = normalize((transpose(scene.inverseModel) * vec4(normal, 0.0)).xyz);
         renderState.t = t;
         renderState.color = triangle.color;

@@ -35,7 +35,9 @@ export class App {
         this.scene = new SceneRaytracing(this.nbSpheres);
         await this.scene.createScene();
 
-        this.renderer = new RendererRaytracing(this.canvas, this.scene);
+        let width = Math.floor(document.body.clientWidth * 0.9);
+        let height = Math.floor(document.body.clientHeight * 0.9);
+        this.renderer = new RendererRaytracing(this.canvas, width, height, this.scene);
 
         this.fpsLabel = document.getElementById('current-fps');
         this.sphereCountLabel = document.getElementById('sphere-count');
