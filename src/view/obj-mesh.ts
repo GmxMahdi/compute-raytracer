@@ -1,17 +1,17 @@
-import { vec2, vec3 } from "gl-matrix";
+import { mat4, vec2, vec3 } from "gl-matrix";
 import { Triangle } from "../model/raycast/triangle";
+import { deg2rad } from "../utils/more-math";
 
-export class ObjectMesh {
-
-    vertexCount: number
+export class ObjectMesh {    
+    triangles: Triangle[];
+    color: vec3;
+    position: vec3;
+    eulers: vec3
+    inverseModel: mat4;
 
     private v: vec3[]
     private vt: vec2[]
     private vn: vec3[]
-    
-    
-    triangles: Triangle[];
-    color: vec3;
 
     private mins: vec3 = [0, 0, 0];
     private maxs: vec3 = [0, 0, 0];
@@ -24,11 +24,15 @@ export class ObjectMesh {
     private yIndex = 1;
     private zIndex = 2;
 
-    constructor() {
+    constructor(position: vec3, eulers: vec3) {
+        this.position = position;
+        this.eulers = eulers;
         this.v = [];
         this.vt = [];
         this.vn = [];
         this.triangles = [];
+        this.inverseModel = mat4.create();
+        this.calculateTransform();
     }
 
     async initialize(
@@ -49,6 +53,26 @@ export class ObjectMesh {
         }
 
         await this.createMeshFromFile(url);
+        this.calculateTransform();
+        console.log(
+            this.inverseModel[3], 
+            this.inverseModel[7],
+            this.inverseModel[11]);
+    }
+
+    update(dt: number) {
+        this.eulers[1] += dt;
+        if (this.eulers[1] > 360) this.eulers[1] -= 360;
+        this.calculateTransform();
+    }
+
+    private calculateTransform() {
+        let model: mat4 = mat4.create();
+        //mat4.rotateZ(model, model, deg2rad(this.eulers[2]));
+        mat4.translate(model, model, this.position);    
+        mat4.rotateY(model, model, deg2rad(this.eulers[1]));
+        //mat4.rotateX(model, model, deg2rad(this.eulers[0]));
+        mat4.invert(this.inverseModel, model);
     }
 
     private async createMeshFromFile(url: string) {
@@ -107,23 +131,25 @@ export class ObjectMesh {
         const triangleCount = vertexDescriptions.length -3;
 
         for (let i = 0; i < triangleCount; ++i) {
-            const cA = this.readCorner(vertexDescriptions[1], result);
-            const cB = this.readCorner(vertexDescriptions[2 + i], result);
-            const cC = this.readCorner(vertexDescriptions[3 + i], result);
-
-            let triangle: Triangle = new Triangle([cA, cB, cC], this.color);
+            let triangle: Triangle = new Triangle();
+            triangle.color = this.color;
+            this.readCorner(vertexDescriptions[1], triangle);
+            this.readCorner(vertexDescriptions[2 + i], triangle);
+            this.readCorner(vertexDescriptions[3 + i], triangle);
+            triangle.calculateCentroid();
             this.triangles.push(triangle);
         }
     }
 
-    private readCorner(vertexDescription: string, result: number[]): vec3 {
+    private readCorner(vertexDescription: string, triangle: Triangle) {
         const v_vt_vn = vertexDescription.split('/');
 
         const v = this.v[parseInt(v_vt_vn[0]) -1];
         const vt = this.vt[parseInt(v_vt_vn[1]) -1];
-        const vn = this.v[parseInt(v_vt_vn[2]) -1];
-        
-        return v;
+        const vn = this.vn[parseInt(v_vt_vn[2]) -1];
+
+        triangle.corners.push(v);
+        triangle.normals.push(vn);
     }
 
     // Center vertexes on geometric center

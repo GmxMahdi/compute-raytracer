@@ -14,7 +14,7 @@ export class SceneRaytracing {
     sphereIndices: number[];
     triangles: Triangle[];
 
-    cat: ObjectMesh;
+    mesh: ObjectMesh;
 
     nodes: Node[];
     nodesUsed: number = 0;
@@ -50,17 +50,23 @@ export class SceneRaytracing {
     }
 
     async createScene() {
-        this.cat = new ObjectMesh();
-        let color: vec3 = [0.9, 0.7, 0.78];
-        await this.cat.initialize(urlCatObj, color, /*invertYZ*/false, /*alignBottom*/true, /*scale*/0.1);
+        // Mesh
+        this.mesh = new ObjectMesh([0, 0, 5], [0, 45, 0]);
+        let meshColor: vec3 = [0.9, 0.7, 0.78];
+        await this.mesh.initialize(urlCatObj, meshColor, /*invertYZ*/false, /*alignBottom*/true, /*scale*/0.1);
 
+        // Populate triangle array
         this.triangles = [];
-        for (const triangle of this.cat.triangles) this.triangles.push(triangle);
+        for (const triangle of this.mesh.triangles) this.triangles.push(triangle);
         this.triangleCount = this.triangles.length;
 
-        console.log('there is ', this.triangles.length, ' triangles');
+        console.log('there is ', this.triangleCount, ' triangles');
 
         this.buildBVH();
+    }
+
+    update() {
+        //this.mesh.update(3);
     }
 
     private generateSphere() {

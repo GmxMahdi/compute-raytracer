@@ -44,6 +44,7 @@ export class RendererRaytracing {
 
     // Scene
     scene: SceneRaytracing;
+    loaded: boolean = false;
 
     constructor(canvas: HTMLCanvasElement, scene: SceneRaytracing){
         this.scene = scene;
@@ -104,7 +105,7 @@ export class RendererRaytracing {
         });
 
         this.sceneParameters = this.device.createBuffer({
-            size: 64,
+            size: 128,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
         });
 
@@ -114,7 +115,7 @@ export class RendererRaytracing {
         });
 
         this.triangleBuffer = this.device.createBuffer({
-            size: 64 * this.scene.triangleCount,
+            size: 112 * this.scene.triangleCount,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         })
 
@@ -150,8 +151,10 @@ export class RendererRaytracing {
                 this.scene.camera.up[0],
                 this.scene.camera.up[1],
                 this.scene.camera.up[2],
-                this.scene.triangles.length
-            ]));
+                this.scene.triangleCount
+            ]), 0, 16);
+
+        this.device.queue.writeBuffer(this.sceneParameters, 64, <ArrayBuffer>this.scene.mesh.inverseModel);
         
         // const sphereData = new Float32Array(8 * this.scene.sphereCount);
         // for (let i = 0; i < this.scene.spheres.length; ++i) {
@@ -166,21 +169,28 @@ export class RendererRaytracing {
         // }
         // this.device.queue.writeBuffer(this.sphereBuffer, 0, sphereData, 0, 8 * this.scene.spheres.length);
 
-        const triangleData: Float32Array = new Float32Array(16 * this.scene.triangleCount);
+        if (this.loaded) return;
+        this.loaded = true;
+
+        const triangleData: Float32Array = new Float32Array(28 * this.scene.triangleCount);
         for (let i = 0; i < this.scene.triangleCount; i++) {
             for (var corner = 0; corner < 3; corner++) {
-                for (var dimension = 0; dimension < 3; dimension++) {
-                    triangleData[16*i + 4 * corner + dimension] = 
-                        this.scene.triangles[i].corners[corner][dimension];
-                }
-                triangleData[16*i + 4 * corner + 3] = 0.0;
+                triangleData[28 * i + 8 * corner]     = this.scene.triangles[i].corners[corner][0];
+                triangleData[28 * i + 8 * corner + 1] = this.scene.triangles[i].corners[corner][1];
+                triangleData[28 * i + 8 * corner + 2] = this.scene.triangles[i].corners[corner][2];
+                triangleData[28 * i + 8 * corner + 3] = 0.0;
+
+                triangleData[28 * i + 8 * corner + 4] = this.scene.triangles[i].normals[corner][0];
+                triangleData[28 * i + 8 * corner + 5] = this.scene.triangles[i].normals[corner][1];
+                triangleData[28 * i + 8 * corner + 6] = this.scene.triangles[i].normals[corner][2];
+                triangleData[28 * i + 8 * corner + 7] = 0.0;
             }
             for (var channel = 0; channel < 3; channel++) {
-                triangleData[16*i + 12 + channel] = this.scene.triangles[i].color[channel];
+                triangleData[28 * i + 24 + channel] = this.scene.triangles[i].color[channel];
             }
-            triangleData[16*i + 15] = 0.0;
+            triangleData[28 * i + 27] = 0.0;
         }
-        this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 16 * this.scene.triangleCount);
+        this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 28 * this.scene.triangleCount);
 
         const nodeData = new Float32Array(8 * this.scene.nodesUsed);
         for (let i = 0; i < this.scene.nodesUsed; ++i) {

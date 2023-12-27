@@ -1,4 +1,4 @@
-import { Renderer } from "../view/renderer";
+import { Renderer } from "../view/meshes/renderer";
 import { Scene } from "../model/vertex/scene";
 import { RendererRaytracing } from "../view/renderer-raytracing";
 import { SceneRaytracing } from "../model/raycast/scene-raytracing";
@@ -65,6 +65,7 @@ export class App {
         let running: boolean = true;
 
         this.updateDeltaTime(timeStamp);
+        this.scene.update();
         this.scene.camera.move(this.forwardsAmount, this.rightAmount);
 
         this.renderer.render();
