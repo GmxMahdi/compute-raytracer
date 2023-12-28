@@ -1,8 +1,17 @@
-struct Sphere {
-    center: vec3<f32>,
-    color: vec3<f32>,
-    radius: f32
+
+struct SceneData {
+    cameraPos: vec3<f32>,
+    cameraForwards: vec3<f32>,
+    cameraRight: vec3<f32>,
+    cameraUp: vec3<f32>,
+    maxBounces: f32,
 }
+
+// struct Sphere {
+//     center: vec3<f32>,
+//     color: vec3<f32>,
+//     radius: f32
+// }
 
 struct Triangle {
     cornerA: vec3<f32>, //f32
@@ -14,11 +23,6 @@ struct Triangle {
     color: vec3<f32>
 }
 
-struct ObjectData {
-    spheres: array<Triangle>
-}
-
-//// Spacial Acceleration Structure ////
 struct Node {
     minCorner: vec3<f32>,
     leftChild: f32,
@@ -31,29 +35,13 @@ struct BLAS {
     rootNodeIndex: vec4<f32>,
 }
 
-struct BVH {
-    nodes: array<Node>,
-}
-
-struct ObjectIndices {
-    objectIndices: array<f32>,
-}
-///////////////////////////////////////
-
-struct SceneData {
-    cameraPos: vec3<f32>,
-    cameraForwards: vec3<f32>,
-    cameraRight: vec3<f32>,
-    cameraUp: vec3<f32>,
-    maxBounces: f32,
-}
-
 struct Ray {
     direction: vec3<f32>,
     origin: vec3<f32>
 }
 
 struct RenderState {
+    distance: f32,
     t: f32,
     color: vec3<f32>,
     hit: bool,
@@ -62,11 +50,11 @@ struct RenderState {
 
 @group(0) @binding(0) var colorBuffer: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(1) var<uniform> scene: SceneData;
-@group(0) @binding(2) var<storage, read> objects: ObjectData; 
-@group(0) @binding(3) var<storage, read> tree: BVH;
+@group(0) @binding(2) var<storage, read> triangles: array<Triangle>; 
+@group(0) @binding(3) var<storage, read> tree: array<Node>;
 @group(0) @binding(4) var<storage, read> blasList: array<BLAS>;
-@group(0) @binding(5) var<storage, read> triangleLookup: ObjectIndices;
-@group(0) @binding(6) var<storage, read> blasLookup: ObjectIndices;
+@group(0) @binding(5) var<storage, read> triangleLookup: array<f32>;
+@group(0) @binding(6) var<storage, read> blasLookup: array<f32>;
 @group(0) @binding(7) var skyTex: texture_cube<f32>;
 @group(0) @binding(8) var skyTexSamp: sampler;
 
@@ -89,13 +77,20 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     var ray: Ray;
     ray.direction = normalize(forwards + horizontalCoefficient * right + verticalCoefficient * up);
     ray.origin = scene.cameraPos;
+    var result: vec4<f32> = rayColor(ray);
 
-    var pixelColor: vec3<f32> = rayColor(ray);
+    var rayColor: vec3<f32> = result.rgb;
+    var skyboxColor: vec3<f32> = textureSampleLevel(skyTex, skyTexSamp, ray.direction, 0.0).rgb;
+
+    let MAX_DISTANCE: f32 = 20;
+    var intensity = clamp((MAX_DISTANCE - result.w) / MAX_DISTANCE, 0, 1);
+    var pixelColor = rayColor * intensity + skyboxColor * (1 - intensity);
 
     textureStore(colorBuffer, screenPos, vec4<f32>(pixelColor, 1.0));
 }
 
-fn rayColor(ray: Ray) -> vec3<f32> {
+fn rayColor(ray: Ray) -> vec4<f32> {
+    var dist: f32 = 0;
     var color: vec3<f32> = vec3(1.0);
     var result: RenderState;
 
@@ -107,6 +102,10 @@ fn rayColor(ray: Ray) -> vec3<f32> {
     for (var bounce: u32 = 0; bounce < bounces; bounce++) {
         result = traceTLAS(worldRay);  
 
+        if (bounce == 0) {
+            dist = result.t;
+        }
+
         if (!result.hit) {
             color *= textureSampleLevel(skyTex, skyTexSamp, worldRay.direction, 0.0).rgb;
             break;
@@ -117,7 +116,7 @@ fn rayColor(ray: Ray) -> vec3<f32> {
         worldRay.direction = normalize(reflect(worldRay.direction, result.normal));
     }
 
-    return color;
+    return vec4<f32>(color, dist);
 }
 
 fn traceTLAS(ray: Ray) -> RenderState {
@@ -127,7 +126,7 @@ fn traceTLAS(ray: Ray) -> RenderState {
     var nearestHit: f32 = 9999;
 
     // Setup BVH
-    var node: Node = tree.nodes[0];
+    var node: Node = tree[0];
     var stack: array<u32, STACK_SIZE>;
     var stackLocation: u32 = 0;
 
@@ -138,8 +137,8 @@ fn traceTLAS(ray: Ray) -> RenderState {
         if (primitiveCount == 0) {
             var iChild1: u32 = nodeIndex;
             var iChild2: u32 = nodeIndex + 1;
-            var child1: Node = tree.nodes[nodeIndex];
-            var child2: Node = tree.nodes[nodeIndex + 1];
+            var child1: Node = tree[nodeIndex];
+            var child2: Node = tree[nodeIndex + 1];
 
             var distance1: f32 = hitAABB(ray, child1);
             var distance2: f32 = hitAABB(ray, child2);
@@ -164,7 +163,7 @@ fn traceTLAS(ray: Ray) -> RenderState {
                 }
                 else {
                     stackLocation -= 1;
-                    node = tree.nodes[stack[stackLocation]];
+                    node = tree[stack[stackLocation]];
                 }
             } 
             else {
@@ -183,7 +182,7 @@ fn traceTLAS(ray: Ray) -> RenderState {
             for (var i: u32 = 0; i < primitiveCount; i++) {
                 var newRenderState: RenderState = traceBLAS(
                     ray, 
-                    blasList[u32(blasLookup.objectIndices[i + nodeIndex])], 
+                    blasList[u32(blasLookup[i + nodeIndex])], 
                     nearestHit, renderState
                 );
 
@@ -198,7 +197,7 @@ fn traceTLAS(ray: Ray) -> RenderState {
             }
             else {
                 stackLocation -= 1;
-                node = tree.nodes[stack[stackLocation]];
+                node = tree[stack[stackLocation]];
             }
         }
     }
@@ -225,7 +224,7 @@ fn traceBLAS(
     blasRenderState.hit = false;
 
     // Setup BVH
-    var node: Node = tree.nodes[u32(blas.rootNodeIndex.x)];
+    var node: Node = tree[u32(blas.rootNodeIndex.x)];
     var stack: array<u32, STACK_SIZE>;
     var stackLocation: u32 = 0;
 
@@ -238,8 +237,8 @@ fn traceBLAS(
         if (primitiveCount == 0) {
             var iChild1: u32 = nodeIndex;
             var iChild2: u32 = nodeIndex + 1;
-            var child1: Node = tree.nodes[nodeIndex];
-            var child2: Node = tree.nodes[nodeIndex + 1];
+            var child1: Node = tree[nodeIndex];
+            var child2: Node = tree[nodeIndex + 1];
 
             var distance1: f32 = hitAABB(objectRay, child1);
             var distance2: f32 = hitAABB(objectRay, child2);
@@ -264,7 +263,7 @@ fn traceBLAS(
                 }
                 else {
                     stackLocation -= 1;
-                    node = tree.nodes[stack[stackLocation]];
+                    node = tree[stack[stackLocation]];
                 }
             } 
             else {
@@ -280,7 +279,7 @@ fn traceBLAS(
             for (var i: u32 = 0; i < primitiveCount; i++) {
                 var newRenderState: RenderState = hitTriangle(
                     objectRay, 
-                    objects.spheres[u32(triangleLookup.objectIndices[i + nodeIndex])], 
+                    triangles[u32(triangleLookup[i + nodeIndex])], 
                     0.001, blasNearestHit, blasRenderState
                 );
 
@@ -295,7 +294,7 @@ fn traceBLAS(
             }
             else {
                 stackLocation -= 1;
-                node = tree.nodes[stack[stackLocation]];
+                node = tree[stack[stackLocation]];
             }
         }
     }
