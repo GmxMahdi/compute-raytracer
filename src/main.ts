@@ -1,4 +1,4 @@
-import { App } from "./control/app";
+import { App } from "./app";
 
 if (!navigator.gpu) {
     document.body.innerHTML = '<h1 style="color: white">This browser cannot support WebGPU yet :(.</h1>'

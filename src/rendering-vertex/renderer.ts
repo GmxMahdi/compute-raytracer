@@ -1,18 +1,18 @@
 import skyboxShader from './shaders/sky-shader.wgsl?raw';
 import shader from "./shaders/shader.wgsl?raw";
-import { Material } from "../material";
-import { ObjectMesh } from "../obj-mesh";
-import { TriangleMesh } from "./triangle-mesh";
-import { QuadMesh } from "./quad-mesh";
+import { Material } from "../material/material";
+import { ObjectMesh } from "../raycast-rendering/obj-mesh";
+import { TriangleMesh } from "./meshes/triangle-mesh";
+import { QuadMesh } from "./meshes/quad-mesh";
 import {mat4} from 'gl-matrix';
-import { ObjectTypes, RenderData, PipelineType } from "../../definitions/definitions";   
+import { ObjectTypes, RenderData, PipelineType } from "../definitions/definitions";   
 
 import imgURLmoxxie from '../images/moxxie.jpg';
 import imgURLchecker from '../images/checker.jpg';
 import objURLchair from '../models/cat.obj?url';
 import imgURLskybox from '../images/space-skybox.png';
-import { CubemapMaterial } from "../cubemap-material";
-import { Camera } from '../../model/camera';
+import { CubemapMaterial } from "../material/cubemap-material";
+import { Camera } from '../model/camera';
 
 
 

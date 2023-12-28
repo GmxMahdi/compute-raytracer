@@ -1,6 +1,6 @@
 import { Triangle } from "./triangle";
 import { Quad } from "./quad";
-import { Camera } from "../camera";
+import { Camera } from "../../model/camera";
 import { vec3, mat4 } from "gl-matrix";
 import { clamp } from "../../utils/more-math";
 import { ObjectTypes, RenderData } from "../../definitions/definitions";

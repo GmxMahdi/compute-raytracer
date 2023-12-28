@@ -26,6 +26,11 @@ struct Node {
     primitiveCount: f32,
 }
 
+struct BLAS {
+    inverseModel: mat4x4<f32>,
+    rootNodeIndex: vec4<f32>,
+}
+
 struct BVH {
     nodes: array<Node>,
 }
@@ -41,8 +46,6 @@ struct SceneData {
     cameraRight: vec3<f32>,
     maxBounces: f32,
     cameraUp: vec3<f32>,
-    primitiveCount: f32,
-    inverseModel: mat4x4<f32>
 }
 
 struct Ray {
@@ -54,7 +57,6 @@ struct RenderState {
     t: f32,
     color: vec3<f32>,
     hit: bool,
-    position: vec3<f32>,
     normal: vec3<f32>
 }
 
@@ -62,9 +64,13 @@ struct RenderState {
 @group(0) @binding(1) var<uniform> scene: SceneData;
 @group(0) @binding(2) var<storage, read> objects: ObjectData; 
 @group(0) @binding(3) var<storage, read> tree: BVH;
-@group(0) @binding(4) var<storage, read> sphereLookup: ObjectIndices;
-@group(0) @binding(5) var skyTex: texture_cube<f32>;
-@group(0) @binding(6) var skyTexSamp: sampler;
+@group(0) @binding(4) var<storage, read> blasList: array<BLAS>;
+@group(0) @binding(5) var<storage, read> triangleLookup: ObjectIndices;
+@group(0) @binding(6) var<storage, read> blasLookup: ObjectIndices;
+@group(0) @binding(7) var skyTex: texture_cube<f32>;
+@group(0) @binding(8) var skyTexSamp: sampler;
+
+
 
 const STACK_SIZE: u32 = 20;
 
@@ -97,13 +103,9 @@ fn rayColor(ray: Ray) -> vec3<f32> {
     worldRay.origin = ray.origin;
     worldRay.direction = ray.direction;
 
-    var objectRay: Ray;
-    objectRay.origin = (scene.inverseModel * vec4<f32>(ray.origin, 1.0)).xyz;
-    objectRay.direction = (scene.inverseModel * vec4<f32>(ray.direction, 0.0)).xyz;
-
     let bounces: u32 = u32(scene.maxBounces);
     for (var bounce: u32 = 0; bounce < bounces; bounce++) {
-        result = trace(objectRay);  
+        result = traceTLAS(worldRay);  
 
         if (!result.hit) {
             color *= textureSampleLevel(skyTex, skyTexSamp, worldRay.direction, 0.0).rgb;
@@ -113,15 +115,12 @@ fn rayColor(ray: Ray) -> vec3<f32> {
 
         worldRay.origin = worldRay.origin + result.t * worldRay.direction;
         worldRay.direction = normalize(reflect(worldRay.direction, result.normal));
-
-        objectRay.origin = (scene.inverseModel * vec4<f32>(worldRay.origin, 1.0)).xyz;
-        objectRay.direction = (scene.inverseModel * vec4<f32>(worldRay.direction, 0.0)).xyz;
     }
 
     return color;
 }
 
-fn trace(ray: Ray) -> RenderState {
+fn traceTLAS(ray: Ray) -> RenderState {
     // Setup render state
     var renderState: RenderState;
     renderState.hit = false;
@@ -182,10 +181,10 @@ fn trace(ray: Ray) -> RenderState {
         else {
             // Perform collison tests inside node
             for (var i: u32 = 0; i < primitiveCount; i++) {
-                var newRenderState: RenderState = hitTriangle(
+                var newRenderState: RenderState = traceBLAS(
                     ray, 
-                    objects.spheres[u32(sphereLookup.objectIndices[i + nodeIndex])], 
-                    0.001, nearestHit, renderState
+                    blasList[u32(blasLookup.objectIndices[i + nodeIndex])], 
+                    nearestHit, renderState
                 );
 
                 if (newRenderState.hit) {
@@ -207,33 +206,140 @@ fn trace(ray: Ray) -> RenderState {
     return renderState;
 }
 
-fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldRenderState: RenderState) -> RenderState {
-    let a: f32 = dot(ray.direction, ray.direction);
-    let b: f32 = 2.0 * dot(ray.direction, ray.origin - sphere.center);
-    let c: f32 = dot(ray.origin - sphere.center, ray.origin - sphere.center) - sphere.radius * sphere.radius;
-    let discriminant: f32 =  b * b - 4 * a * c;
+fn traceBLAS(
+    ray: Ray, 
+    blas: BLAS, 
+    nearestHit: f32,
+    renderState: RenderState) -> RenderState {
 
-    var renderState: RenderState;
-    renderState.color = oldRenderState.color;
+    // Object Ray
+    var objectRay: Ray;
+    objectRay.origin = (blas.inverseModel * vec4<f32>(ray.origin, 1.0)).xyz;
+    objectRay.direction = (blas.inverseModel * vec4<f32>(ray.direction, 0.0)).xyz;
 
-    if (discriminant > 0.0) {
-        let t: f32 = (-b -sqrt(discriminant)) / (2 * a);
-        if (t > tMin && t < tMax) {
-            renderState.position = ray.origin + t * ray.direction;
-            renderState.normal = normalize(renderState.position - sphere.center);
-            renderState.t = t;
-            renderState.color = sphere.color;
-            renderState.hit = true;
-            return renderState;
+    // BLAS render state
+    var blasRenderState: RenderState;
+    blasRenderState.t = renderState.t;
+    blasRenderState.normal = renderState.normal;
+    blasRenderState.color = renderState.color;
+    blasRenderState.hit = false;
+
+    // Setup BVH
+    var node: Node = tree.nodes[u32(blas.rootNodeIndex.x)];
+    var stack: array<u32, STACK_SIZE>;
+    var stackLocation: u32 = 0;
+
+    var blasNearestHit: f32 = nearestHit;
+
+    while (true) {
+        var primitiveCount: u32 = u32(node.primitiveCount);
+        var nodeIndex: u32 = u32(node.leftChild);
+
+        if (primitiveCount == 0) {
+            var iChild1: u32 = nodeIndex;
+            var iChild2: u32 = nodeIndex + 1;
+            var child1: Node = tree.nodes[nodeIndex];
+            var child2: Node = tree.nodes[nodeIndex + 1];
+
+            var distance1: f32 = hitAABB(objectRay, child1);
+            var distance2: f32 = hitAABB(objectRay, child2);
+
+            // If child2 closer, test collision child2 first.
+            if (distance1 > distance2) {
+                var tempDist: f32 = distance1;
+                distance1 = distance2;
+                distance2 = tempDist;
+
+                var tempChild: Node = child1;
+                child1 = child2;
+                child2 = tempChild;
+
+                iChild1 = nodeIndex + 1;
+                iChild2 = nodeIndex;
+            }
+
+            if (distance1 > blasNearestHit) {
+                if (stackLocation == 0) {
+                    break;
+                }
+                else {
+                    stackLocation -= 1;
+                    node = tree.nodes[stack[stackLocation]];
+                }
+            } 
+            else {
+                node = child1;
+                if (distance2 < blasNearestHit) {
+                    stack[stackLocation] = iChild2;
+                    stackLocation += 1;
+                }
+            }
+        }
+        else {
+            // Perform collison tests inside node
+            for (var i: u32 = 0; i < primitiveCount; i++) {
+                var newRenderState: RenderState = hitTriangle(
+                    objectRay, 
+                    objects.spheres[u32(triangleLookup.objectIndices[i + nodeIndex])], 
+                    0.001, blasNearestHit, blasRenderState
+                );
+
+                if (newRenderState.hit) {
+                    blasNearestHit = newRenderState.t;
+                    blasRenderState = newRenderState;
+                }
+            }
+
+            if (stackLocation == 0) {
+                break;
+            }
+            else {
+                stackLocation -= 1;
+                node = tree.nodes[stack[stackLocation]];
+            }
         }
     }
 
-    renderState.hit = false;
-    return renderState;
+    if (blasRenderState.hit) {
+        blasRenderState.normal = normalize(
+            (transpose(blas.inverseModel) * vec4(blasRenderState.normal, 0.0)).xyz
+        );
+    }
+
+    return blasRenderState;
 }
 
+// fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldRenderState: RenderState) -> RenderState {
+//     let a: f32 = dot(ray.direction, ray.direction);
+//     let b: f32 = 2.0 * dot(ray.direction, ray.origin - sphere.center);
+//     let c: f32 = dot(ray.origin - sphere.center, ray.origin - sphere.center) - sphere.radius * sphere.radius;
+//     let discriminant: f32 =  b * b - 4 * a * c;
+
+//     var renderState: RenderState;
+//     renderState.color = oldRenderState.color;
+
+//     if (discriminant > 0.0) {
+//         let t: f32 = (-b -sqrt(discriminant)) / (2 * a);
+//         if (t > tMin && t < tMax) {
+//             renderState.position = ray.origin + t * ray.direction;
+//             renderState.normal = normalize(renderState.position - sphere.center);
+//             renderState.t = t;
+//             renderState.color = sphere.color;
+//             renderState.hit = true;
+//             return renderState;
+//         }
+//     }
+
+//     renderState.hit = false;
+//     return renderState;
+// }
+
 // https://www.graphics.cornell.edu/pubs/1997/MT97.pdf
-fn hitTriangle(ray: Ray, triangle: Triangle, tMin: f32, tMax: f32, oldRenderState: RenderState) -> RenderState {
+fn hitTriangle(
+    ray: Ray, 
+    triangle: Triangle, 
+    tMin: f32, tMax: f32, 
+    oldRenderState: RenderState) -> RenderState {
 
     var renderState: RenderState;
     renderState.hit = false;
@@ -265,12 +371,9 @@ fn hitTriangle(ray: Ray, triangle: Triangle, tMin: f32, tMax: f32, oldRenderStat
     let t: f32 = invDet * dot(edge2, sCrossEdge1);
     u *= invDet;
     v *= invDet;
-    if (t > tMin && t < tMax) {
-        
-        renderState.position = ray.origin + t * ray.direction;
-        let normal: vec3<f32> = (1.0 - u - v) * triangle.normalA + u * triangle.normalB + v * triangle.normalC;
-        // let normal: vec3<f32> = normalize(cross(edge1, edge2));
-        renderState.normal = normalize((transpose(scene.inverseModel) * vec4(normal, 0.0)).xyz);
+    if (t > tMin && t < tMax) {        
+        renderState.normal = (1.0 - u - v) * triangle.normalA + u * triangle.normalB + v * triangle.normalC;
+        // renderState.normal = normalize(cross(edge1, edge2));
         renderState.t = t;
         renderState.color = triangle.color;
         renderState.hit = true;

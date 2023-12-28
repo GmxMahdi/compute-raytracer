@@ -1,8 +1,8 @@
-import { SceneRaytracing } from '../model/raycast/scene-raytracing';
-import { CubemapMaterial } from './cubemap-material';
+import { SceneRaytracing } from './scene-raytracing';
+import { CubemapMaterial } from '../material/cubemap-material';
 import shaderRaytracerKernel from './shaders/raytracer-kernel.wgsl?raw';
 import shaderScreen from './shaders/screen-shader.wgsl?raw';
-import urlSkybox from '../images/daylight-skybox.png';
+import urlSkybox from '../assets/images/daylight-skybox.png';
 
 
 
@@ -28,12 +28,13 @@ export class RendererRaytracing {
     colorBufferView: GPUTextureView;
     sampler: GPUSampler;
     sceneParameters: GPUBuffer;
-    sphereBuffer: GPUBuffer;
     triangleBuffer: GPUBuffer;
     skyboxMaterial : CubemapMaterial;
     
     nodeBuffer: GPUBuffer;
-    sphereIndexBuffer: GPUBuffer;
+    blasBuffer: GPUBuffer;
+    blasIndexBuffer: GPUBuffer
+    triangleIndexBuffer: GPUBuffer;
 
     // Pipeline Objects
     raytracingPipeline: GPUComputePipeline;
@@ -107,34 +108,38 @@ export class RendererRaytracing {
         });
 
         this.sceneParameters = this.device.createBuffer({
-            size: 128,
+            size: 64,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
         });
 
-        this.sphereBuffer = this.device.createBuffer({
-            size: 32 * this.scene.triangleCount,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
-        });
-
         this.triangleBuffer = this.device.createBuffer({
-            size: 112 * this.scene.triangleCount,
+            size: 112 * this.scene.triangles.length,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         })
 
+        this.triangleIndexBuffer = this.device.createBuffer({
+            size: 4 * this.scene.triangles.length,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+        });
+    
+        this.blasBuffer = this.device.createBuffer({
+            size: 80 * this.scene.blasList.length,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+        });
+
+        this.blasIndexBuffer = this.device.createBuffer({
+            size: 4 * this.scene.blasIndices.length,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+        });
+
         this.nodeBuffer = this.device.createBuffer({
-            size: 32 * this.scene.nodesUsed,
+            size: 32 * this.scene.nodes.length,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
         });
-
-        this.sphereIndexBuffer = this.device.createBuffer({
-            size: 4 * this.scene.triangleCount,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
-        });
-
     }
 
     updateScene() {
-        const maxBounces: number = 10;
+        const maxBounces: number = 4;
         this.device.queue.writeBuffer(
             this.sceneParameters, 0,
             new Float32Array([
@@ -153,29 +158,47 @@ export class RendererRaytracing {
                 this.scene.camera.up[0],
                 this.scene.camera.up[1],
                 this.scene.camera.up[2],
-                this.scene.triangleCount
-            ]), 0, 16);
+                0.0
+            ]), 0, 16
+        );
 
-        this.device.queue.writeBuffer(this.sceneParameters, 64, <ArrayBuffer>this.scene.mesh.inverseModel);
-        
-        // const sphereData = new Float32Array(8 * this.scene.sphereCount);
-        // for (let i = 0; i < this.scene.spheres.length; ++i) {
-        //     sphereData[8 * i + 0] = this.scene.spheres[i].center[0];
-        //     sphereData[8 * i + 1] = this.scene.spheres[i].center[1];
-        //     sphereData[8 * i + 2] = this.scene.spheres[i].center[2];
-        //     sphereData[8 * i + 3] = 0.0;
-        //     sphereData[8 * i + 4] = this.scene.spheres[i].color[0];
-        //     sphereData[8 * i + 5] = this.scene.spheres[i].color[1];
-        //     sphereData[8 * i + 6] = this.scene.spheres[i].color[2];
-        //     sphereData[8 * i + 7] = this.scene.spheres[i].radius;
-        // }
-        // this.device.queue.writeBuffer(this.sphereBuffer, 0, sphereData, 0, 8 * this.scene.spheres.length);
+        const blasData: Float32Array = new Float32Array(20 * this.scene.blasList.length);
+        for (let i = 0; i < this.scene.blasList.length; ++i) {
+            for (let j = 0; j < 16; ++j) {
+                blasData[20 * i + j] = <number> this.scene.blasList[i].inverseModel.at(j);
+            }
+            blasData[20 * i + 16] = <number> this.scene.blasList[i].rootNodeIndex;
+            blasData[20 * i + 17] = <number> this.scene.blasList[i].rootNodeIndex;
+            blasData[20 * i + 18] = <number> this.scene.blasList[i].rootNodeIndex;
+            blasData[20 * i + 19] = <number> this.scene.blasList[i].rootNodeIndex;
+        }
+        this.device.queue.writeBuffer(this.blasBuffer, 0, blasData, 0, 20 * this.scene.blasList.length);
+
+        const blasIndexData: Float32Array = new Float32Array(this.scene.blasIndices.length);
+        for (let i = 0; i < this.scene.blasIndices.length; ++i) {
+            blasIndexData[i] = this.scene.blasIndices[i];
+        }
+        this.device.queue.writeBuffer(this.blasIndexBuffer, 0, blasIndexData, 0, this.scene.blasIndices.length);
+
+        // Write top-level nodes
+        const nodeDataA = new Float32Array(8 * this.scene.nodesUsed);
+        for (let i = 0; i < this.scene.nodesUsed; ++i) {
+            nodeDataA[8 * i + 0] = this.scene.nodes[i].minCorner[0];
+            nodeDataA[8 * i + 1] = this.scene.nodes[i].minCorner[1];
+            nodeDataA[8 * i + 2] = this.scene.nodes[i].minCorner[2];
+            nodeDataA[8 * i + 3] = this.scene.nodes[i].leftChild;
+            nodeDataA[8 * i + 4] = this.scene.nodes[i].maxCorner[0];
+            nodeDataA[8 * i + 5] = this.scene.nodes[i].maxCorner[1];
+            nodeDataA[8 * i + 6] = this.scene.nodes[i].maxCorner[2];
+            nodeDataA[8 * i + 7] = this.scene.nodes[i].primitiveCount;
+        }
+        this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeDataA, 0, 8 * this.scene.nodesUsed);
 
         if (this.loaded) return;
         this.loaded = true;
 
-        const triangleData: Float32Array = new Float32Array(28 * this.scene.triangleCount);
-        for (let i = 0; i < this.scene.triangleCount; i++) {
+        const triangleData: Float32Array = new Float32Array(28 * this.scene.triangles.length);
+        for (let i = 0; i < this.scene.triangles.length; i++) {
             for (var corner = 0; corner < 3; corner++) {
                 triangleData[28 * i + 8 * corner]     = this.scene.triangles[i].corners[corner][0];
                 triangleData[28 * i + 8 * corner + 1] = this.scene.triangles[i].corners[corner][1];
@@ -192,26 +215,29 @@ export class RendererRaytracing {
             }
             triangleData[28 * i + 27] = 0.0;
         }
-        this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 28 * this.scene.triangleCount);
+        this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 28 * this.scene.triangles.length);
 
-        const nodeData = new Float32Array(8 * this.scene.nodesUsed);
-        for (let i = 0; i < this.scene.nodesUsed; ++i) {
-            nodeData[8 * i + 0] = this.scene.nodes[i].minCorner[0];
-            nodeData[8 * i + 1] = this.scene.nodes[i].minCorner[1];
-            nodeData[8 * i + 2] = this.scene.nodes[i].minCorner[2];
-            nodeData[8 * i + 3] = this.scene.nodes[i].leftChild;
-            nodeData[8 * i + 4] = this.scene.nodes[i].maxCorner[0];
-            nodeData[8 * i + 5] = this.scene.nodes[i].maxCorner[1];
-            nodeData[8 * i + 6] = this.scene.nodes[i].maxCorner[2];
-            nodeData[8 * i + 7] = this.scene.nodes[i].sphereCount;
+        // Write bottom-level nodes
+        const nodeDataB = new Float32Array(8 * this.scene.mesh.bvh.nodesUsed);
+        for (let i = 0; i < this.scene.mesh.bvh.nodesUsed; ++i) {
+            let baseIndex: number = this.scene.tlasNodesMax + i;
+            nodeDataB[8 * i + 0] = this.scene.nodes[baseIndex].minCorner[0];
+            nodeDataB[8 * i + 1] = this.scene.nodes[baseIndex].minCorner[1];
+            nodeDataB[8 * i + 2] = this.scene.nodes[baseIndex].minCorner[2];
+            nodeDataB[8 * i + 3] = this.scene.nodes[baseIndex].leftChild;
+            nodeDataB[8 * i + 4] = this.scene.nodes[baseIndex].maxCorner[0];
+            nodeDataB[8 * i + 5] = this.scene.nodes[baseIndex].maxCorner[1];
+            nodeDataB[8 * i + 6] = this.scene.nodes[baseIndex].maxCorner[2];
+            nodeDataB[8 * i + 7] = this.scene.nodes[baseIndex].primitiveCount;
         }
-        this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeData, 0, 8 * this.scene.nodesUsed);
+        let bufferOffset: number = 32 * this.scene.tlasNodesMax;
+        this.device.queue.writeBuffer(this.nodeBuffer, bufferOffset, nodeDataB, 0, 8 * this.scene.mesh.bvh.nodesUsed);
 
-        const sphereIndexData = new Float32Array(this.scene.triangleCount);
+        const triangleIndexData = new Float32Array(this.scene.triangles.length);
         for (let i = 0; i < this.scene.triangles.length; ++i) {
-            sphereIndexData[i] = this.scene.sphereIndices[i];
+            triangleIndexData[i] = this.scene.triangleIndices[i];
         }
-        this.device.queue.writeBuffer(this.sphereIndexBuffer, 0, sphereIndexData, 0, this.scene.triangleCount);
+        this.device.queue.writeBuffer(this.triangleIndexBuffer, 0, triangleIndexData, 0, this.scene.triangles.length);
     }
 
     async makePipeline() {
@@ -251,10 +277,20 @@ export class RendererRaytracing {
                 {
                     binding: 5,
                     visibility: GPUShaderStage.COMPUTE,
-                    texture: { viewDimension: 'cube' }
+                    buffer: { type: 'read-only-storage', hasDynamicOffset: false}
                 },
                 {
                     binding: 6,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: 'read-only-storage', hasDynamicOffset: false}
+                },
+                {
+                    binding: 7,
+                    visibility: GPUShaderStage.COMPUTE,
+                    texture: { viewDimension: 'cube' }
+                },
+                {
+                    binding: 8,
                     visibility: GPUShaderStage.COMPUTE,
                     sampler: {}
                 },
@@ -289,15 +325,27 @@ export class RendererRaytracing {
                 {
                     binding: 4,
                     resource: {
-                        buffer: this.sphereIndexBuffer
+                        buffer: this.blasBuffer
                     }
                 },
                 {
                     binding: 5,
-                    resource: this.skyboxMaterial.view
+                    resource: {
+                        buffer: this.triangleIndexBuffer
+                    }
                 },
                 {
                     binding: 6,
+                    resource: {
+                        buffer: this.blasIndexBuffer
+                    }
+                },
+                {
+                    binding: 7,
+                    resource: this.skyboxMaterial.view
+                },
+                {
+                    binding: 8,
                     resource: this.skyboxMaterial.sampler
                 }
             ]

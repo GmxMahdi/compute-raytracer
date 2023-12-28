@@ -1,7 +1,6 @@
-import { Renderer } from "../view/meshes/renderer";
-import { Scene } from "../model/vertex/scene";
-import { RendererRaytracing } from "../view/renderer-raytracing";
-import { SceneRaytracing } from "../model/raycast/scene-raytracing";
+
+import { RendererRaytracing } from "./rendering-raycast/renderer-raytracing";
+import { SceneRaytracing } from "./rendering-raycast/scene-raytracing";
 
 export class App {
 
@@ -32,7 +31,7 @@ export class App {
     }
 
     async initialize() {
-        this.scene = new SceneRaytracing(this.nbSpheres);
+        this.scene = new SceneRaytracing();
         await this.scene.createScene();
 
         let width = Math.floor(document.body.clientWidth * 0.9);

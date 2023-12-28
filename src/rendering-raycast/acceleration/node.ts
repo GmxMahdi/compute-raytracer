@@ -4,5 +4,5 @@ export class Node {
     minCorner: vec3;
     leftChild: number;
     maxCorner: vec3;
-    sphereCount: number;
+    primitiveCount: number;
 }

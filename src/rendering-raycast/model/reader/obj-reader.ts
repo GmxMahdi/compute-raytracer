@@ -1,82 +1,54 @@
-import { mat4, vec2, vec3 } from "gl-matrix";
-import { Triangle } from "../model/raycast/triangle";
-import { deg2rad } from "../utils/more-math";
+import { vec2, vec3 } from "gl-matrix";
+import { Triangle } from "../triangle";
+import { ObjectReaderDescriptor } from "./obj-reader-descriptior";
 
-export class ObjectMesh {    
-    triangles: Triangle[];
-    color: vec3;
-    position: vec3;
-    eulers: vec3
-    inverseModel: mat4;
+export class ObjectReader {
+    private static color: vec3;
+    private static v: vec3[]
+    private static vt: vec2[]
+    private static vn: vec3[]
 
-    private v: vec3[]
-    private vt: vec2[]
-    private vn: vec3[]
+    private static mins: vec3 = [0, 0, 0];
+    private static maxs: vec3 = [0, 0, 0];
+    private static offsets: vec3 = [0, 0, 0];
 
-    private mins: vec3 = [0, 0, 0];
-    private maxs: vec3 = [0, 0, 0];
-    private offsets: vec3 = [0, 0, 0];
+    private static alignBottom = false;
+    private static scale : number = 1;
 
-    private alignBottom = false;
-    private scale : number = 1;
+    private static xIndex = 0;
+    private static yIndex = 1;
+    private static zIndex = 2;
 
-    private xIndex = 0;
-    private yIndex = 1;
-    private zIndex = 2;
 
-    constructor(position: vec3, eulers: vec3) {
-        this.position = position;
-        this.eulers = eulers;
-        this.v = [];
-        this.vt = [];
-        this.vn = [];
-        this.triangles = [];
-        this.inverseModel = mat4.create();
-        this.calculateTransform();
-    }
-
-    async initialize(
+    static async loadMeshFromObjFile(
         url: string, 
-        color: vec3, 
-        invertYZ: boolean = false, 
-        alignBottom: boolean = false, 
-        scale: number = 1) {
+        descriptor: ObjectReaderDescriptor) {
 
-        this.color = color;
+        this.color = descriptor.color;
 
         // Alignment settings
-        this.alignBottom = alignBottom;
-        this.scale = scale;
+        let invertYZ = descriptor.invertYZ ? descriptor.invertYZ.valueOf() : false;
+        this.alignBottom = descriptor.alignBottom ? descriptor.alignBottom.valueOf() : false;
+        this.scale = descriptor.scale ? descriptor.scale.valueOf() : 1;
+
         if (invertYZ) {
             this.yIndex = 2;
             this.zIndex = 1;
         }
+        else {
+            this.yIndex = 1;
+            this.zIndex = 2;
+        }
 
-        await this.createMeshFromFile(url);
-        this.calculateTransform();
-        console.log(
-            this.inverseModel[3], 
-            this.inverseModel[7],
-            this.inverseModel[11]);
+        return await this.createMeshFromFile(url);
     }
 
-    update(dt: number) {
-        this.eulers[1] += dt;
-        if (this.eulers[1] > 360) this.eulers[1] -= 360;
-        this.calculateTransform();
-    }
-
-    private calculateTransform() {
-        let model: mat4 = mat4.create();
-        //mat4.rotateZ(model, model, deg2rad(this.eulers[2]));
-        mat4.translate(model, model, this.position);    
-        mat4.rotateY(model, model, deg2rad(this.eulers[1]));
-        //mat4.rotateX(model, model, deg2rad(this.eulers[0]));
-        mat4.invert(this.inverseModel, model);
-    }
-
-    private async createMeshFromFile(url: string) {
-        let result: number[] = [];
+    private static async createMeshFromFile(url: string): Promise<Triangle[]> {
+        // Clear buffers
+        this.v = [];
+        this.vt = [];
+        this.vn = [];
+        let triangles: Triangle[] = [];
 
         const response: Response = await fetch(url);
         const blob: Blob = await response.blob();
@@ -89,11 +61,18 @@ export class ObjectMesh {
             if      (line[0] === 'v' && line[1] === ' ') this.readVertexLine(line);
             else if (line[0] === 'v' && line[1] === 't') this.readTexcoordLine(line);
             else if (line[0] === 'v' && line[1] === 'n') this.readNormalLine(line);
-            else if (line[0] === 'f') this.readFaceLine(line, result);
+            else if (line[0] === 'f') this.addTriangleFromFaceData(line, triangles);
         }
+
+        // Clear buffers
+        this.v = [];
+        this.vt = [];
+        this.vn = [];
+
+        return triangles;
     }
 
-    private readVertexLine(line: string) {
+    private static readVertexLine(line: string) {
         const components = line.split(' ');
         const newVertex: vec3 = [
             parseFloat(components[1 + this.xIndex]),
@@ -106,7 +85,7 @@ export class ObjectMesh {
         this.v.push(newVertex);
     }
 
-    private readTexcoordLine(line: string) {
+    private static readTexcoordLine(line: string) {
         const components = line.split(' ');
         const newTexcoord: vec2 = [
             parseFloat(components[1]),
@@ -115,7 +94,7 @@ export class ObjectMesh {
         this.vt.push(newTexcoord);
     }
 
-    private readNormalLine(line: string) {
+    private static readNormalLine(line: string) {
         const components = line.split(' ');
         const newNormal: vec3 = [
             parseFloat(components[1 + this.xIndex]),
@@ -125,7 +104,7 @@ export class ObjectMesh {
         this.vn.push(newNormal);
     }
 
-    private readFaceLine(line: string, result: number[]) {
+    private static addTriangleFromFaceData(line: string, triangles: Triangle[]) {
         line = line.replace('\n', '');
         const vertexDescriptions = line.split(' ');
         const triangleCount = vertexDescriptions.length -3;
@@ -137,11 +116,11 @@ export class ObjectMesh {
             this.readCorner(vertexDescriptions[2 + i], triangle);
             this.readCorner(vertexDescriptions[3 + i], triangle);
             triangle.calculateCentroid();
-            this.triangles.push(triangle);
+            triangles.push(triangle);
         }
     }
 
-    private readCorner(vertexDescription: string, triangle: Triangle) {
+    private static readCorner(vertexDescription: string, triangle: Triangle) {
         const v_vt_vn = vertexDescription.split('/');
 
         const v = this.v[parseInt(v_vt_vn[0]) -1];
@@ -153,7 +132,7 @@ export class ObjectMesh {
     }
 
     // Center vertexes on geometric center
-    private initMinMax(lines: string[]) {
+    private static initMinMax(lines: string[]) {
         for (const line of lines) {
             if (line[0] === 'v' && line[1] === ' ') {
                 const components = line.split(' ');
