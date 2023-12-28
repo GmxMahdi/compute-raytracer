@@ -141,13 +141,13 @@ export class RendererRaytracing {
     updateScene() {
         // Scene parameters
         const maxBounces: number = 4;
-        const sceneParameterData = new Float32Array(16);
-        sceneParameterData.set(this.scene.camera.position, 0);
-        sceneParameterData.set(this.scene.camera.forwards, 4);
-        sceneParameterData.set(this.scene.camera.right, 8);
-        sceneParameterData.set(this.scene.camera.up, 12);
-        sceneParameterData.set([maxBounces], 15);
-        this.device.queue.writeBuffer(this.sceneParameters, 0, sceneParameterData);
+        const sceneParametersData = new Float32Array(16);
+        sceneParametersData.set(this.scene.camera.position, 0);
+        sceneParametersData.set(this.scene.camera.forwards, 4);
+        sceneParametersData.set(this.scene.camera.right, 8);
+        sceneParametersData.set(this.scene.camera.up, 12);
+        sceneParametersData.set([maxBounces], 15);
+        this.device.queue.writeBuffer(this.sceneParameters, 0, sceneParametersData);
 
 
         // BLAS Data
