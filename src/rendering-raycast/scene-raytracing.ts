@@ -37,6 +37,7 @@ export class SceneRaytracing {
         await this.mesh.initialize(urlCatObj, {
             color: [0.8, 0.6, 0.7],
             alignBottom: true,
+            invertYZ: false,
             scale: 0.025
         });
 
@@ -51,17 +52,21 @@ export class SceneRaytracing {
         for (const triangle of this.mesh.triangles) 
             this.triangles.push(triangle);
 
+        // Set indices
         this.triangleIndices = new Array(this.triangles.length)
         for (var i: number = 0; i < this.triangles.length; i += 1) {
             this.triangleIndices[i] = this.mesh.bvh.triangleIndices[i];
         }
 
+
         this.tlasNodesMax = 2 * this.models.length - 1;
         const blasNodeUsed: number = this.mesh.bvh.nodesUsed;
+        
+        // Initialize TLAS nodes
         this.nodes = new Array(this.tlasNodesMax + blasNodeUsed);
-        for (var i:number = 0; i < 2 * this.triangles.length - 1; i += 1) {
+        for (var i: number = 0; i < this.tlasNodesMax; i += 1) {
             const node = new Node();
-            node.leftChild = 0;
+            node.leftChildIndex = 0;
             node.primitiveCount = 0;
             node.minCorner = [0, 0, 0];
             node.maxCorner = [0, 0, 0];
@@ -84,6 +89,16 @@ export class SceneRaytracing {
         this.nodesUsed = 0;
         this.blasList = new Array(this.models.length);
         this.blasIndices = new Array(this.models.length);
+
+        // Reset TLASes
+        for (var i: number = 0; i < this.tlasNodesMax; ++i) {
+            this.nodes[i].leftChildIndex = 0;
+            this.nodes[i].primitiveCount = 0;
+            this.nodes[i].minCorner = [0, 0, 0];
+            this.nodes[i].maxCorner = [0, 0, 0];
+        }
+
+        // Calculate BLASes
         for (let i: number = 0; i < this.models.length; ++i) {
             var blas: BLAS = new BLAS(
                 this.mesh.bvh.minCorner,
@@ -95,30 +110,22 @@ export class SceneRaytracing {
             this.blasIndices[i] = i;
         }
 
-        for (var i: number = 0; i < this.tlasNodesMax; ++i) {
-            this.nodes[i].leftChild = 0;
-            this.nodes[i].primitiveCount = 0;
-            this.nodes[i].minCorner = [0, 0, 0];
-            this.nodes[i].maxCorner = [0, 0, 0];
-        }
-
         var root: Node = this.nodes[0];
-        root.leftChild = 0;
+        root.leftChildIndex = 0;
         root.primitiveCount = this.blasList.length;
-        this.nodesUsed += 1
+        this.nodesUsed += 1;
 
         this.updateBounds(0);
         this.subdivide(0);
     }
 
     private updateBounds(nodeIndex: number) {
-        const DEFAULT = 999999;
         var node: Node = this.nodes[nodeIndex];
-        node.minCorner = [DEFAULT, DEFAULT, DEFAULT];
-        node.maxCorner = [-DEFAULT, -DEFAULT, -DEFAULT];
+        node.minCorner = [ 1e30,  1e30,  1e30];
+        node.maxCorner = [-1e30, -1e30, -1e30];
 
         for (var i: number = 0; i < node.primitiveCount; i += 1) {
-            const blas: BLAS = this.blasList[this.blasIndices[node.leftChild + i]];
+            const blas: BLAS = this.blasList[this.blasIndices[node.leftChildIndex + i]];
             vec3.min(node.minCorner, node.minCorner, blas.minCorner);
             vec3.max(node.maxCorner, node.maxCorner, blas.maxCorner);
         }
@@ -132,8 +139,10 @@ export class SceneRaytracing {
             return;
         }
 
-        var extent: vec3 = [0, 0, 0];
+        var extent: vec3 = vec3.create();
         vec3.subtract(extent, node.maxCorner, node.minCorner);
+
+        // Choose longest dimension
         var axis: number = 0;
         if (extent[1] > extent[axis]) {
             axis = 1;
@@ -144,22 +153,23 @@ export class SceneRaytracing {
 
         const splitPosition: number = node.minCorner[axis] + extent[axis] / 2;
 
-        var i: number = node.leftChild;
-        var j: number = i + node.primitiveCount - 1;
-
+        // Partitionning
+        let i: number = node.leftChildIndex;
+        let j: number = i + node.primitiveCount - 1;
         while (i <= j) {
+            // If center of BLAS is on the left side of split
             if (this.blasList[this.blasIndices[i]].center[axis] < splitPosition) {
                 i += 1;
             }
             else {
-                var temp: number = this.blasIndices[i];
+                let temp: number = this.blasIndices[i];
                 this.blasIndices[i] = this.blasIndices[j];
                 this.blasIndices[j] = temp;
                 j -= 1;
             }
         }
 
-        var leftCount: number = i - node.leftChild;
+        let leftCount: number = i - node.leftChildIndex;
         if (leftCount == 0 || leftCount == node.primitiveCount) {
             return;
         }
@@ -169,13 +179,13 @@ export class SceneRaytracing {
         const rightChildIndex: number = this.nodesUsed;
         this.nodesUsed += 1;
 
-        this.nodes[leftChildIndex].leftChild = node.leftChild;
+        this.nodes[leftChildIndex].leftChildIndex = node.leftChildIndex;
         this.nodes[leftChildIndex].primitiveCount = leftCount;
 
-        this.nodes[rightChildIndex].leftChild = i;
+        this.nodes[rightChildIndex].leftChildIndex = i;
         this.nodes[rightChildIndex].primitiveCount = node.primitiveCount - leftCount;
 
-        node.leftChild = leftChildIndex;
+        node.leftChildIndex = leftChildIndex;
         node.primitiveCount = 0;
 
         this.updateBounds(leftChildIndex);
@@ -188,9 +198,8 @@ export class SceneRaytracing {
         for (let i = 0; i < this.mesh.bvh.nodesUsed; ++i) {
             let nodeToUpload = this.mesh.bvh.nodes[i];
             if (nodeToUpload.primitiveCount == 0) {
-                nodeToUpload.leftChild += this.tlasNodesMax;
+                nodeToUpload.leftChildIndex += this.tlasNodesMax;
             }
-            
             this.nodes[this.tlasNodesMax + i] = nodeToUpload;
         }
     }

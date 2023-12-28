@@ -2,7 +2,7 @@ import { vec3 } from "gl-matrix";
 
 export class Node {
     minCorner: vec3;
-    leftChild: number;
+    leftChildIndex: number;
     maxCorner: vec3;
     primitiveCount: number;
 }

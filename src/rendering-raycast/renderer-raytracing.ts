@@ -171,7 +171,7 @@ export class RendererRaytracing {
             let loc = 8 * i;
             nodeDataA.set(this.scene.nodes[i].minCorner, loc);
             nodeDataA.set(this.scene.nodes[i].maxCorner, loc + 4);
-            nodeDataA[loc + 3] = this.scene.nodes[i].leftChild;
+            nodeDataA[loc + 3] = this.scene.nodes[i].leftChildIndex;
             nodeDataA[loc + 7] = this.scene.nodes[i].primitiveCount;
         }
         this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeDataA, 0, 8 * this.scene.nodesUsed);
@@ -199,7 +199,7 @@ export class RendererRaytracing {
             const node = this.scene.nodes[baseIndex];
             const loc = 8 * i;
             nodeDataB.set(node.minCorner, loc + 0);
-            nodeDataB.set([node.leftChild], loc + 3);
+            nodeDataB.set([node.leftChildIndex], loc + 3);
             nodeDataB.set(node.maxCorner, loc + 4);
             nodeDataB.set([node.primitiveCount], loc + 7);
         }

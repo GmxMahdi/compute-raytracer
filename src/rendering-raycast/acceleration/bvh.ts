@@ -40,7 +40,7 @@ export class BVH {
         }
 
         var root: Node = this.nodes[0];
-        root.leftChild = 0;
+        root.leftChildIndex = 0;
         root.primitiveCount = this.triangles.length;
         this.nodesUsed += 1
 
@@ -55,7 +55,7 @@ export class BVH {
         node.maxCorner = [-DEFAULT, -DEFAULT, -DEFAULT];
 
         for (var i: number = 0; i < node.primitiveCount; i += 1) {
-            const triangle: Triangle = this.triangles[this.triangleIndices[node.leftChild + i]];
+            const triangle: Triangle = this.triangles[this.triangleIndices[node.leftChildIndex + i]];
             for (const corner of triangle.corners) {
                 vec3.min(node.minCorner, node.minCorner, corner);
                 vec3.max(node.maxCorner, node.maxCorner, corner);
@@ -83,7 +83,7 @@ export class BVH {
 
         const splitPosition: number = node.minCorner[axis] + extent[axis] / 2;
 
-        var i: number = node.leftChild;
+        var i: number = node.leftChildIndex;
         var j: number = i + node.primitiveCount - 1;
 
         while (i <= j) {
@@ -98,7 +98,7 @@ export class BVH {
             }
         }
 
-        var leftCount: number = i - node.leftChild;
+        var leftCount: number = i - node.leftChildIndex;
         if (leftCount == 0 || leftCount == node.primitiveCount) {
             return;
         }
@@ -108,13 +108,13 @@ export class BVH {
         const rightChildIndex: number = this.nodesUsed;
         this.nodesUsed += 1;
 
-        this.nodes[leftChildIndex].leftChild = node.leftChild;
+        this.nodes[leftChildIndex].leftChildIndex = node.leftChildIndex;
         this.nodes[leftChildIndex].primitiveCount = leftCount;
 
-        this.nodes[rightChildIndex].leftChild = i;
+        this.nodes[rightChildIndex].leftChildIndex = i;
         this.nodes[rightChildIndex].primitiveCount = node.primitiveCount - leftCount;
 
-        node.leftChild = leftChildIndex;
+        node.leftChildIndex = leftChildIndex;
         node.primitiveCount = 0;
 
         this.updateBounds(leftChildIndex);
