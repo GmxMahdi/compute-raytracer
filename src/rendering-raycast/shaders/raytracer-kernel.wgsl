@@ -44,8 +44,8 @@ struct SceneData {
     cameraPos: vec3<f32>,
     cameraForwards: vec3<f32>,
     cameraRight: vec3<f32>,
-    maxBounces: f32,
     cameraUp: vec3<f32>,
+    maxBounces: f32,
 }
 
 struct Ray {

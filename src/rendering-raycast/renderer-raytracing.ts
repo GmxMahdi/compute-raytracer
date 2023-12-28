@@ -139,96 +139,69 @@ export class RendererRaytracing {
     }
 
     updateScene() {
+        // Scene parameters
         const maxBounces: number = 4;
-        this.device.queue.writeBuffer(
-            this.sceneParameters, 0,
-            new Float32Array([
-                this.scene.camera.position[0],
-                this.scene.camera.position[1],
-                this.scene.camera.position[2],
-                0.0,
-                this.scene.camera.forwards[0],
-                this.scene.camera.forwards[1],
-                this.scene.camera.forwards[2],
-                0.0,
-                this.scene.camera.right[0],
-                this.scene.camera.right[1],
-                this.scene.camera.right[2],
-                maxBounces,
-                this.scene.camera.up[0],
-                this.scene.camera.up[1],
-                this.scene.camera.up[2],
-                0.0
-            ]), 0, 16
-        );
+        const sceneParameterData = new Float32Array(16);
+        sceneParameterData.set(this.scene.camera.position, 0);
+        sceneParameterData.set(this.scene.camera.forwards, 4);
+        sceneParameterData.set(this.scene.camera.right, 8);
+        sceneParameterData.set(this.scene.camera.up, 12);
+        sceneParameterData.set([maxBounces], 15);
+        this.device.queue.writeBuffer(this.sceneParameters, 0, sceneParameterData);
 
+
+        // BLAS Data
         const blasData: Float32Array = new Float32Array(20 * this.scene.blasList.length);
         for (let i = 0; i < this.scene.blasList.length; ++i) {
-            for (let j = 0; j < 16; ++j) {
-                blasData[20 * i + j] = <number> this.scene.blasList[i].inverseModel.at(j);
-            }
-            blasData[20 * i + 16] = <number> this.scene.blasList[i].rootNodeIndex;
-            blasData[20 * i + 17] = <number> this.scene.blasList[i].rootNodeIndex;
-            blasData[20 * i + 18] = <number> this.scene.blasList[i].rootNodeIndex;
-            blasData[20 * i + 19] = <number> this.scene.blasList[i].rootNodeIndex;
+            blasData.set(this.scene.blasList[i].inverseModel, 20 * i);
+            blasData.set([this.scene.blasList[i].rootNodeIndex], 20 * i + 16);
         }
         this.device.queue.writeBuffer(this.blasBuffer, 0, blasData, 0, 20 * this.scene.blasList.length);
 
+        // BLAS Indexes
         const blasIndexData: Float32Array = new Float32Array(this.scene.blasIndices.length);
         for (let i = 0; i < this.scene.blasIndices.length; ++i) {
             blasIndexData[i] = this.scene.blasIndices[i];
         }
         this.device.queue.writeBuffer(this.blasIndexBuffer, 0, blasIndexData, 0, this.scene.blasIndices.length);
 
-        // Write top-level nodes
+        // TLAS
         const nodeDataA = new Float32Array(8 * this.scene.nodesUsed);
         for (let i = 0; i < this.scene.nodesUsed; ++i) {
-            nodeDataA[8 * i + 0] = this.scene.nodes[i].minCorner[0];
-            nodeDataA[8 * i + 1] = this.scene.nodes[i].minCorner[1];
-            nodeDataA[8 * i + 2] = this.scene.nodes[i].minCorner[2];
-            nodeDataA[8 * i + 3] = this.scene.nodes[i].leftChild;
-            nodeDataA[8 * i + 4] = this.scene.nodes[i].maxCorner[0];
-            nodeDataA[8 * i + 5] = this.scene.nodes[i].maxCorner[1];
-            nodeDataA[8 * i + 6] = this.scene.nodes[i].maxCorner[2];
-            nodeDataA[8 * i + 7] = this.scene.nodes[i].primitiveCount;
+            let loc = 8 * i;
+            nodeDataA.set(this.scene.nodes[i].minCorner, loc);
+            nodeDataA.set(this.scene.nodes[i].maxCorner, loc + 4);
+            nodeDataA[loc + 3] = this.scene.nodes[i].leftChild;
+            nodeDataA[loc + 7] = this.scene.nodes[i].primitiveCount;
         }
         this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeDataA, 0, 8 * this.scene.nodesUsed);
 
         if (this.loaded) return;
         this.loaded = true;
 
+        // Triangles
         const triangleData: Float32Array = new Float32Array(28 * this.scene.triangles.length);
         for (let i = 0; i < this.scene.triangles.length; i++) {
+            const loc = 28 * i;
+            const triangles = this.scene.triangles[i];
             for (var corner = 0; corner < 3; corner++) {
-                triangleData[28 * i + 8 * corner]     = this.scene.triangles[i].corners[corner][0];
-                triangleData[28 * i + 8 * corner + 1] = this.scene.triangles[i].corners[corner][1];
-                triangleData[28 * i + 8 * corner + 2] = this.scene.triangles[i].corners[corner][2];
-                triangleData[28 * i + 8 * corner + 3] = 0.0;
-
-                triangleData[28 * i + 8 * corner + 4] = this.scene.triangles[i].normals[corner][0];
-                triangleData[28 * i + 8 * corner + 5] = this.scene.triangles[i].normals[corner][1];
-                triangleData[28 * i + 8 * corner + 6] = this.scene.triangles[i].normals[corner][2];
-                triangleData[28 * i + 8 * corner + 7] = 0.0;
+                triangleData.set(triangles.corners[corner], loc + 8 * corner);
+                triangleData.set(triangles.normals[corner], loc + 8 * corner + 4);
             }
-            for (var channel = 0; channel < 3; channel++) {
-                triangleData[28 * i + 24 + channel] = this.scene.triangles[i].color[channel];
-            }
-            triangleData[28 * i + 27] = 0.0;
+            triangleData.set(triangles.color, loc + 24);
         }
         this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 28 * this.scene.triangles.length);
 
-        // Write bottom-level nodes
+        // BLAS Nodes
         const nodeDataB = new Float32Array(8 * this.scene.mesh.bvh.nodesUsed);
         for (let i = 0; i < this.scene.mesh.bvh.nodesUsed; ++i) {
-            let baseIndex: number = this.scene.tlasNodesMax + i;
-            nodeDataB[8 * i + 0] = this.scene.nodes[baseIndex].minCorner[0];
-            nodeDataB[8 * i + 1] = this.scene.nodes[baseIndex].minCorner[1];
-            nodeDataB[8 * i + 2] = this.scene.nodes[baseIndex].minCorner[2];
-            nodeDataB[8 * i + 3] = this.scene.nodes[baseIndex].leftChild;
-            nodeDataB[8 * i + 4] = this.scene.nodes[baseIndex].maxCorner[0];
-            nodeDataB[8 * i + 5] = this.scene.nodes[baseIndex].maxCorner[1];
-            nodeDataB[8 * i + 6] = this.scene.nodes[baseIndex].maxCorner[2];
-            nodeDataB[8 * i + 7] = this.scene.nodes[baseIndex].primitiveCount;
+            const baseIndex: number = this.scene.tlasNodesMax + i;
+            const node = this.scene.nodes[baseIndex];
+            const loc = 8 * i;
+            nodeDataB.set(node.minCorner, loc + 0);
+            nodeDataB.set([node.leftChild], loc + 3);
+            nodeDataB.set(node.maxCorner, loc + 4);
+            nodeDataB.set([node.primitiveCount], loc + 7);
         }
         let bufferOffset: number = 32 * this.scene.tlasNodesMax;
         this.device.queue.writeBuffer(this.nodeBuffer, bufferOffset, nodeDataB, 0, 8 * this.scene.mesh.bvh.nodesUsed);
