@@ -137,22 +137,14 @@ fn traceTLAS(ray: Ray) -> RenderState {
         if (primitiveCount == 0) {
             var iChild1: u32 = nodeIndex;
             var iChild2: u32 = nodeIndex + 1;
-            var child1: Node = tree[nodeIndex];
-            var child2: Node = tree[nodeIndex + 1];
-
-            var distance1: f32 = hitAABB(ray, child1);
-            var distance2: f32 = hitAABB(ray, child2);
+            var distance1: f32 = hitAABB(ray, tree[nodeIndex]);
+            var distance2: f32 = hitAABB(ray, tree[nodeIndex + 1]);
 
             // If child2 closer, test collision child2 first.
             if (distance1 > distance2) {
                 var tempDist: f32 = distance1;
                 distance1 = distance2;
                 distance2 = tempDist;
-
-                var tempChild: Node = child1;
-                child1 = child2;
-                child2 = tempChild;
-
                 iChild1 = nodeIndex + 1;
                 iChild2 = nodeIndex;
             }
@@ -167,7 +159,7 @@ fn traceTLAS(ray: Ray) -> RenderState {
                 }
             } 
             else {
-                node = child1;
+                node = tree[iChild1];
                 if (distance2 < nearestHit) {
                     stack[stackLocation] = iChild2;
                     stackLocation += 1;
@@ -237,21 +229,15 @@ fn traceBLAS(
         if (primitiveCount == 0) {
             var iChild1: u32 = nodeIndex;
             var iChild2: u32 = nodeIndex + 1;
-            var child1: Node = tree[nodeIndex];
-            var child2: Node = tree[nodeIndex + 1];
 
-            var distance1: f32 = hitAABB(objectRay, child1);
-            var distance2: f32 = hitAABB(objectRay, child2);
+            var distance1: f32 = hitAABB(objectRay, tree[nodeIndex]);
+            var distance2: f32 = hitAABB(objectRay, tree[nodeIndex + 1]);
 
             // If child2 closer, test collision child2 first.
             if (distance1 > distance2) {
                 var tempDist: f32 = distance1;
                 distance1 = distance2;
                 distance2 = tempDist;
-
-                var tempChild: Node = child1;
-                child1 = child2;
-                child2 = tempChild;
 
                 iChild1 = nodeIndex + 1;
                 iChild2 = nodeIndex;
@@ -267,7 +253,7 @@ fn traceBLAS(
                 }
             } 
             else {
-                node = child1;
+                node = tree[iChild1];
                 if (distance2 < blasNearestHit) {
                     stack[stackLocation] = iChild2;
                     stackLocation += 1;
@@ -371,7 +357,7 @@ fn hitTriangle(
     u *= invDet;
     v *= invDet;
     if (t > tMin && t < tMax) {        
-        renderState.normal = (1.0 - u - v) * triangle.normalA + u * triangle.normalB + v * triangle.normalC;
+        renderState.normal = mat3x3<f32>(triangle.normalA, triangle.normalB, triangle.normalC) * vec3<f32>(1.0 - u - v, u, v);
         // renderState.normal = normalize(cross(edge1, edge2));
         renderState.t = t;
         renderState.color = triangle.color;
