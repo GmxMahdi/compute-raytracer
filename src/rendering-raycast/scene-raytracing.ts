@@ -78,9 +78,9 @@ export class SceneRaytracing {
         this.blasConsumed = true;
     }
 
-    update() {
+    update(dt: number) {
         for (const model of this.models)
-            model.update(0.5);
+            model.update(dt);
 
         this.buildBVH();
     }

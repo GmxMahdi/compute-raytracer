@@ -66,7 +66,7 @@ export class App {
         let running: boolean = true;
 
         this.updateDeltaTime(timeStamp);
-        this.scene.update();
+        this.scene.update(this.dt);
         this.scene.camera.move(this.forwardsAmount, this.rightAmount);
 
         this.renderer.render().then(() => {
@@ -78,9 +78,11 @@ export class App {
     private updateDeltaTime(timeStamp: number) {
         this.dt = timeStamp - this.lastTimeStamp;
         this.dtAccumulated += this.dt;
+        this.dt /= 1000;
         this.nbTicks += 1;
         this.lastTimeStamp = timeStamp;
 
+        // Update display
         if (this.nbTicks % 10 === 0) {
             const fps = 1000.0 / (this.dtAccumulated / this.nbTicks);
             this.fpsLabel.innerText = fps.toFixed(0).toString();

@@ -138,7 +138,7 @@ export class RendererRaytracing {
         });
     }
 
-    updateScene() {
+    recalculateScene() {
         // Scene parameters
         const maxBounces: number = 4;
         const sceneParametersData = new Float32Array(16);
@@ -395,7 +395,7 @@ export class RendererRaytracing {
     async render() {
         const performanceStartTime = performance.now();
 
-        this.updateScene();
+        this.recalculateScene();
 
         //command encoder: records draw commands for submission
         const commandEncoder : GPUCommandEncoder = this.device.createCommandEncoder();
