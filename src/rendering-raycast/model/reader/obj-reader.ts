@@ -113,8 +113,8 @@ export class ObjectReader {
             let triangle: Triangle = new Triangle();
             triangle.color = this.color;
             this.readCorner(vertexDescriptions[1], triangle);
-            this.readCorner(vertexDescriptions[2 + i], triangle);
-            this.readCorner(vertexDescriptions[3 + i], triangle);
+            this.readCorner(vertexDescriptions[this.yIndex + 1 + i], triangle);
+            this.readCorner(vertexDescriptions[this.zIndex + 1 + i], triangle);
             triangle.calculateCentroid();
             triangles.push(triangle);
         }
