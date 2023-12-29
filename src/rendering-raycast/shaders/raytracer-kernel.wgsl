@@ -70,12 +70,13 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     let horizontalCoefficient: f32 =  (f32(screenPos.x) - f32(screenSize.x) / 2) / f32(screenSize.x) * 2;
     let verticalCoefficient: f32 =  (f32(screenSize.y) / 2 - f32(screenPos.y)) / f32(screenSize.x) * 2;
 
-    let forwards: vec3<f32> = scene.cameraForwards;
-    let right: vec3<f32> = scene.cameraRight;
-    let up: vec3<f32> = scene.cameraUp;
-
     var ray: Ray;
-    ray.direction = normalize(forwards + horizontalCoefficient * right + verticalCoefficient * up);
+    ray.direction = normalize(
+        scene.cameraForwards + 
+        horizontalCoefficient * scene.cameraRight + 
+        verticalCoefficient * scene.cameraUp
+    );
+
     ray.origin = scene.cameraPos;
     var result: vec4<f32> = rayColor(ray);
 
@@ -380,7 +381,7 @@ fn hitAABB(ray: Ray, node: Node) -> f32 {
 
     if (t_min > t_max || t_max < 0) {
         return 99999;
-    } else {
-        return t_min;
     }
+
+    return t_min;
 }
