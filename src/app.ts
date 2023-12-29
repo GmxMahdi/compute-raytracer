@@ -67,7 +67,7 @@ export class App {
 
         this.updateDeltaTime(timeStamp);
         this.scene.update(this.dt);
-        this.scene.camera.move(this.forwardsAmount, this.rightAmount);
+        this.scene.camera.move(this.forwardsAmount * this.dt, this.rightAmount * this.dt);
 
         this.renderer.render().then(() => {
             if (running)
@@ -93,7 +93,7 @@ export class App {
 
     private handleKeyDownEvent(event: KeyboardEvent) {
         if (this.isControlsLocked) return;
-        const SPEED = 0.1;
+        const SPEED = 2;
 
         if (event.code === 'KeyW') this.forwardsAmount = SPEED;
         if (event.code === 'KeyS') this.forwardsAmount = -SPEED;
