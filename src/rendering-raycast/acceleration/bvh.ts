@@ -2,6 +2,7 @@ import { vec3 } from "gl-matrix";
 import { Node } from "./node";
 import { Triangle } from "../model/triangle";
 import { surfaceArea } from "../../utils/more-math";
+import { AABB } from "./aabb";
 
 export class BVH {
 
@@ -63,7 +64,7 @@ export class BVH {
         }
     }
 
-    private findBestSplit(node: Node): [number, number] {
+    private findBestSplit(node: Node): [number, number, number] {
         const SPLIT_PER_AXIS = 10;
         let bestCost = 1e30;
         let bestAxis = 0;
@@ -81,46 +82,31 @@ export class BVH {
                 }
             }
         }
-        return [bestAxis, bestSplitPosition];
+        return [bestAxis, bestSplitPosition, bestCost];
     }
 
     private SAH(node: Node, axis: number, splitPosition: number) {
-        const TRAVERSAL_COST = 1;
-        const TRIANGLE_INTERSECTION_COST = 2;
-
-        let minIndex: number = node.leftChildIndex;
-        let maxIndex: number = minIndex + node.primitiveCount;
+        const leftAABB: AABB = new AABB();
+        const rightAABB: AABB = new AABB();
 
         let nbTrianglesLeft = 0;
-        let nbTrianglesRight = 0;
-        for (let i = minIndex; i < maxIndex; ++i) {
-            if (this.triangles[this.triangleIndices[i]].centroid[axis] < splitPosition) ++nbTrianglesLeft;
-            else ++nbTrianglesRight;
+        let nbTrianglesRight = 0;   
+        for (let i = 0; i < node.primitiveCount; ++i) {
+            const triangle: Triangle = this.triangles[this.triangleIndices[i + node.leftChildIndex]];
+            if (triangle.centroid[axis] < splitPosition) {
+                ++nbTrianglesLeft;
+                leftAABB.grow(triangle.corners[0]);
+                leftAABB.grow(triangle.corners[1]);
+                leftAABB.grow(triangle.corners[2]);
+            }
+            else  {
+                ++nbTrianglesRight;
+                rightAABB.grow(triangle.corners[0]);
+                rightAABB.grow(triangle.corners[1]);
+                rightAABB.grow(triangle.corners[2]);
+            }
         }
-        const nodeExtents = vec3.subtract(vec3.create(), node.maxCorner, node.minCorner);
-
-        const leftExtents = vec3.create();
-        {
-            let splitExtents = vec3.clone(node.maxCorner);
-            splitExtents[axis] = splitPosition;
-            vec3.subtract(leftExtents, splitExtents, node.minCorner); 
-        }
-
-        const rightExtents = vec3.create();
-        {
-            let splitExtents = vec3.clone(node.minCorner);
-            splitExtents[axis] = splitPosition;
-            vec3.subtract(rightExtents, node.maxCorner, splitExtents); 
-        }
-
-        const nodeSA = surfaceArea(nodeExtents);
-        const leftSA = surfaceArea(leftExtents);
-        const rightSA = surfaceArea(rightExtents);
-
-        const pA = leftSA / nodeSA;
-        const pB = rightSA / nodeSA;
-
-        return TRAVERSAL_COST + (pA * nbTrianglesLeft + pB * nbTrianglesRight) * TRIANGLE_INTERSECTION_COST;
+        return leftAABB.surfaceArea() * nbTrianglesLeft + rightAABB.surfaceArea() * nbTrianglesRight;
     }
 
     private subdivideSAH(nodeIndex: number) {
@@ -131,11 +117,20 @@ export class BVH {
             return;
         }
 
-        const [axis, splitPosition] = this.findBestSplit(node);
+        const [axis, splitPosition, subidisionCost] = this.findBestSplit(node);
+
+        const parentAABB = new AABB();
+        parentAABB.grow(node.minCorner);
+        parentAABB.grow(node.maxCorner);
+
+        const parentCost = parentAABB.surfaceArea() * node.primitiveCount;
+        if (parentCost < subidisionCost) {
+            return;
+        }
+
 
         var i: number = node.leftChildIndex;
         var j: number = i + node.primitiveCount - 1;
-
         while (i <= j) {
             if (this.triangles[this.triangleIndices[i]].centroid[axis] < splitPosition) {
                 i += 1;
