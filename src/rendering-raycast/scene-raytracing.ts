@@ -31,7 +31,8 @@ export class SceneRaytracing {
     }
 
     async createScene() {
-        this.camera = new Camera([-2.0, 0.0, 0.0], 90, 0);
+        //this.camera = new Camera([-2.0, 0.0, 0.0], 90, 0);
+        this.camera = new Camera([0.0593, 2.692, 3.293], 106, 270);
 
         this.mesh = new ObjectMesh();
         await this.mesh.initialize(urlCatObj, {

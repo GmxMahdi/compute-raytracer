@@ -82,7 +82,7 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     );
     ray.origin = scene.cameraPos;
 
-    let traces: f32 = clamp(rayColor(ray) / 100, 0.0, 1.0);
+    let traces: f32 = clamp(rayColor(ray) / 300, 0.0, 1.0);
     //let traces : f32 = min(1.0, max(0.0, rayColor(ray) / 1000));
     var pixelColor: vec3<f32> = traces * vec3<f32>(1.0);
     textureStore(colorBuffer, screenPos, vec4<f32>(pixelColor, 1.0));
