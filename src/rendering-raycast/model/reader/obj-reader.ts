@@ -128,8 +128,8 @@ export class ObjectReader {
         const vn = this.vn[parseInt(v_vt_vn[2]) -1];
 
         triangle.corners.push(v);
-        triangle.textures.push(vt);
         triangle.normals.push(vn);
+        triangle.textures.push(vt);
     }
 
     // Center vertexes on geometric center

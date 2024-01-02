@@ -368,7 +368,7 @@ fn hitTriangle(
         renderState.normal = mat3x3<f32>(triangle.normalA, triangle.normalB, triangle.normalC) * vec3<f32>(w, u, v);
         // renderState.normal = normalize(cross(edge1, edge2));
         renderState.t = t;
-        renderState.texCoord = mat3x2<f32>(triangle.textureA, triangle.textureC, triangle.textureB) * vec3<f32>(w, v, u);
+        renderState.texCoord = mat3x2<f32>(triangle.textureA, triangle.textureC, triangle.textureB) * vec3<f32>(w, u, v);
         renderState.hit = true;
         return renderState;
     }
