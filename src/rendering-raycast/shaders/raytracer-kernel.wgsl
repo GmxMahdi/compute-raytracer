@@ -1,5 +1,5 @@
 
-struct SceneData {
+struct SceneParameters {
     cameraPos: vec3<f32>,
     cameraForwards: vec3<f32>,
     cameraRight: vec3<f32>,
@@ -16,10 +16,13 @@ struct SceneData {
 struct Triangle {
     cornerA: vec3<f32>, //f32
     normalA: vec3<f32>, //f32
+    textureA: vec2<f32>,
     cornerB: vec3<f32>, //f32
     normalB: vec3<f32>, //f32
+    textureB: vec2<f32>,
     cornerC: vec3<f32>, //f32
     normalC: vec3<f32>,
+    textureC: vec2<f32>,
     color: vec3<f32>
 }
 
@@ -43,20 +46,21 @@ struct Ray {
 struct RenderState {
     distance: f32,
     t: f32,
-    color: vec3<f32>,
+    texCoord: vec2<f32>,
     hit: bool,
     normal: vec3<f32>
 }
 
 @group(0) @binding(0) var colorBuffer: texture_storage_2d<rgba8unorm, write>;
-@group(0) @binding(1) var<uniform> scene: SceneData;
+@group(0) @binding(1) var<uniform> scene: SceneParameters;
 @group(0) @binding(2) var<storage, read> triangles: array<Triangle>; 
 @group(0) @binding(3) var<storage, read> tree: array<Node>;
 @group(0) @binding(4) var<storage, read> blasList: array<BLAS>;
 @group(0) @binding(5) var<storage, read> triangleLookup: array<f32>;
 @group(0) @binding(6) var<storage, read> blasLookup: array<f32>;
 @group(0) @binding(7) var skyTex: texture_cube<f32>;
-@group(0) @binding(8) var skyTexSamp: sampler;
+@group(0) @binding(8) var meshTex: texture_2d<f32>;
+@group(0) @binding(9) var texSamp: sampler;
 
 
 
@@ -81,9 +85,9 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     var result: vec4<f32> = rayColor(ray);
 
     var rayColor: vec3<f32> = result.rgb;
-    var skyboxColor: vec3<f32> = textureSampleLevel(skyTex, skyTexSamp, ray.direction, 0.0).rgb;
+    var skyboxColor: vec3<f32> = textureSampleLevel(skyTex, texSamp, ray.direction, 0.0).rgb;
 
-    let MAX_DISTANCE: f32 = 20;
+    let MAX_DISTANCE: f32 = 50;
     var intensity = clamp((MAX_DISTANCE - result.w) / MAX_DISTANCE, 0, 1);
     var pixelColor = rayColor * intensity + skyboxColor * (1 - intensity);
 
@@ -99,7 +103,7 @@ fn rayColor(ray: Ray) -> vec4<f32> {
     worldRay.origin = ray.origin;
     worldRay.direction = ray.direction;
 
-    let bounces: u32 = u32(scene.maxBounces);
+    let bounces: u32 = 1;//ru32(scene.maxBounces);
     for (var bounce: u32 = 0; bounce < bounces; bounce++) {
         result = traceTLAS(worldRay);  
 
@@ -108,10 +112,12 @@ fn rayColor(ray: Ray) -> vec4<f32> {
         }
 
         if (!result.hit) {
-            color *= textureSampleLevel(skyTex, skyTexSamp, worldRay.direction, 0.0).rgb;
+            color *= textureSampleLevel(skyTex, texSamp, worldRay.direction, 0.0).rgb;
             break;
         }
-        color *= result.color;
+        
+        // Else there was a hit...
+        color *= textureSampleLevel(meshTex, texSamp, result.texCoord, 0.0).rgb;
 
         worldRay.origin = worldRay.origin + result.t * worldRay.direction;
         worldRay.direction = normalize(reflect(worldRay.direction, result.normal));
@@ -213,7 +219,7 @@ fn traceBLAS(
     var blasRenderState: RenderState;
     blasRenderState.t = renderState.t;
     blasRenderState.normal = renderState.normal;
-    blasRenderState.color = renderState.color;
+    blasRenderState.texCoord = renderState.texCoord;
     blasRenderState.hit = false;
 
     // Setup BVH
@@ -302,7 +308,7 @@ fn traceBLAS(
 //     let discriminant: f32 =  b * b - 4 * a * c;
 
 //     var renderState: RenderState;
-//     renderState.color = oldRenderState.color;
+//     renderState.texCoord = oldRenderState.texCoord;
 
 //     if (discriminant > 0.0) {
 //         let t: f32 = (-b -sqrt(discriminant)) / (2 * a);
@@ -310,7 +316,7 @@ fn traceBLAS(
 //             renderState.position = ray.origin + t * ray.direction;
 //             renderState.normal = normalize(renderState.position - sphere.center);
 //             renderState.t = t;
-//             renderState.color = sphere.color;
+//             renderState.texCoord = sphere.texCoord;
 //             renderState.hit = true;
 //             return renderState;
 //         }
@@ -329,7 +335,7 @@ fn hitTriangle(
 
     var renderState: RenderState;
     renderState.hit = false;
-    renderState.color = oldRenderState.color;
+    renderState.texCoord = oldRenderState.texCoord;
 
     let edge1: vec3<f32> = triangle.cornerB - triangle.cornerA;
     let edge2: vec3<f32> = triangle.cornerC - triangle.cornerA;
@@ -357,11 +363,12 @@ fn hitTriangle(
     let t: f32 = invDet * dot(edge2, sCrossEdge1);
     u *= invDet;
     v *= invDet;
-    if (t > tMin && t < tMax) {        
-        renderState.normal = mat3x3<f32>(triangle.normalA, triangle.normalB, triangle.normalC) * vec3<f32>(1.0 - u - v, u, v);
+    if (t > tMin && t < tMax) {    
+        let w = 1 - u - v;    
+        renderState.normal = mat3x3<f32>(triangle.normalA, triangle.normalB, triangle.normalC) * vec3<f32>(w, u, v);
         // renderState.normal = normalize(cross(edge1, edge2));
         renderState.t = t;
-        renderState.color = triangle.color;
+        renderState.texCoord = mat3x2<f32>(triangle.textureA, triangle.textureC, triangle.textureB) * vec3<f32>(w, v, u);
         renderState.hit = true;
         return renderState;
     }

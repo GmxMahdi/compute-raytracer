@@ -1,9 +1,10 @@
-import { vec3 } from "gl-matrix";
+import { vec2, vec3 } from "gl-matrix";
 import { off } from "process";
 
 export class Triangle {
     corners: vec3[];
     normals: vec3[];
+    textures: vec2[];
     color: vec3;
     centroid: vec3;
 
@@ -27,6 +28,7 @@ export class Triangle {
 
     constructor() {
         this.corners = [];
+        this.textures = [];
         this.normals = [];
         this.color = [0, 0, 0];
         this.centroid = [0, 0, 0];

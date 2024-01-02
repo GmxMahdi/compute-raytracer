@@ -43,8 +43,8 @@ export class SceneRaytracing {
 
         // Initialize models
         this.models = [];
-        for (let z = -1; z < 2; ++z)
-            for (let x = -1; x < 2; ++x)
+        for (let z = 0; z < 2; ++z)
+            for (let x = 0; x < 2; ++x)
                 this.models.push(new Model([5 * x, 0, 5 * z], [180, 45 * x, 0]));
 
         // Populate triangle array from our mesh

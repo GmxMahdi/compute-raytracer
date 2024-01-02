@@ -3,6 +3,8 @@ import { CubemapMaterial } from '../material/cubemap-material';
 import shaderRaytracerKernel from './shaders/raytracer-kernel.wgsl?raw';
 import shaderScreen from './shaders/screen-shader.wgsl?raw';
 import urlSkybox from '../assets/images/daylight-skybox.png';
+import urlMouseyTexture from '../assets/models/mousey/mousey_Diffuse.png';
+import { Material } from '../material/material';
 
 
 
@@ -29,6 +31,7 @@ export class RendererRaytracing {
     sampler: GPUSampler;
     sceneParameters: GPUBuffer;
     triangleBuffer: GPUBuffer;
+    mouseyMaterial: Material;
     skyboxMaterial : CubemapMaterial;
     
     nodeBuffer: GPUBuffer;
@@ -99,6 +102,9 @@ export class RendererRaytracing {
 
         this.colorBufferView = this.colorBuffer.createView();
 
+        this.mouseyMaterial = new Material();
+        await this.mouseyMaterial.initialize(this.device, urlMouseyTexture);
+
         this.sampler = this.device.createSampler({
             addressModeU: 'repeat',
             addressModeV: 'repeat',
@@ -113,7 +119,7 @@ export class RendererRaytracing {
         });
 
         this.triangleBuffer = this.device.createBuffer({
-            size: 112 * this.scene.triangles.length,
+            size: 160 * this.scene.triangles.length,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         })
 
@@ -180,17 +186,18 @@ export class RendererRaytracing {
         this.loaded = true;
 
         // Triangles
-        const triangleData: Float32Array = new Float32Array(28 * this.scene.triangles.length);
+        const triangleData: Float32Array = new Float32Array(40 * this.scene.triangles.length);
         for (let i = 0; i < this.scene.triangles.length; i++) {
-            const loc = 28 * i;
+            const loc = 40 * i;
             const triangles = this.scene.triangles[i];
             for (var corner = 0; corner < 3; corner++) {
-                triangleData.set(triangles.corners[corner], loc + 8 * corner);
-                triangleData.set(triangles.normals[corner], loc + 8 * corner + 4);
+                triangleData.set(triangles.corners[corner], loc + 12 * corner);
+                triangleData.set(triangles.normals[corner], loc + 12 * corner + 4);
+                triangleData.set(triangles.textures[corner], loc + 12 * corner + 8);
             }
-            triangleData.set(triangles.color, loc + 24);
+            triangleData.set(triangles.color, loc + 36);
         }
-        this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 28 * this.scene.triangles.length);
+        this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 40 * this.scene.triangles.length);
 
         // BLAS Nodes
         const nodeDataB = new Float32Array(8 * this.scene.mesh.bvh.nodesUsed);
@@ -265,6 +272,11 @@ export class RendererRaytracing {
                 {
                     binding: 8,
                     visibility: GPUShaderStage.COMPUTE,
+                    texture: {}
+                },
+                {
+                    binding: 9,
+                    visibility: GPUShaderStage.COMPUTE,
                     sampler: {}
                 },
             ]
@@ -319,6 +331,10 @@ export class RendererRaytracing {
                 },
                 {
                     binding: 8,
+                    resource: this.mouseyMaterial.view
+                },
+                {
+                    binding: 9,
                     resource: this.skyboxMaterial.sampler
                 }
             ]
