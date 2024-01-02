@@ -1,6 +1,6 @@
 import { SceneRaytracing } from './scene-raytracing';
 import { CubemapMaterial } from '../material/cubemap-material';
-import shaderRaytracerKernel from './shaders/heatmap-kernel.wgsl?raw';
+import shaderRaytracerKernel from './shaders/raytracer-kernel.wgsl?raw';
 import shaderScreen from './shaders/screen-shader.wgsl?raw';
 import urlSkybox from '../assets/images/daylight-skybox.png';
 import urlMouseyTexture from '../assets/models/mousey/mousey_Diffuse.png';

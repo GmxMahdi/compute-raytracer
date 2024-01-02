@@ -13,7 +13,7 @@ export class Model {
     }
 
     update(dt: number) {
-        const SPEED = 90;
+        const SPEED = 22.5;
         this.eulers[1] += SPEED * dt;
         if (this.eulers[1] > 360) this.eulers[1] -= 360;
         this.calculateTransform();

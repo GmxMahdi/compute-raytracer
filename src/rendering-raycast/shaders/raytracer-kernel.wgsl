@@ -103,7 +103,9 @@ fn rayColor(ray: Ray) -> vec4<f32> {
     worldRay.origin = ray.origin;
     worldRay.direction = ray.direction;
 
-    let bounces: u32 = 1;//ru32(scene.maxBounces);
+    let bounces: u32 = u32(scene.maxBounces);
+    var affectFactor: f32 = 1.0;
+    var sumFactor: f32 = 0.0;
     for (var bounce: u32 = 0; bounce < bounces; bounce++) {
         result = traceTLAS(worldRay);  
 
@@ -111,13 +113,19 @@ fn rayColor(ray: Ray) -> vec4<f32> {
             dist = result.t;
         }
 
+       let nextSumFactor = affectFactor + sumFactor;
+
         if (!result.hit) {
-            color *= textureSampleLevel(skyTex, texSamp, worldRay.direction, 0.0).rgb;
+            color = (color * sumFactor + textureSampleLevel(skyTex, texSamp, worldRay.direction, 0.0).rgb * affectFactor) / nextSumFactor;
             break;
         }
-        
+
         // Else there was a hit...
-        color *= textureSampleLevel(meshTex, texSamp, result.texCoord, 0.0).rgb;
+ 
+        color = (color * sumFactor + textureSampleLevel(meshTex, texSamp, result.texCoord, 0.0).rgb * affectFactor) / nextSumFactor;
+
+        affectFactor /= 2.0;
+        sumFactor = nextSumFactor;
 
         worldRay.origin = worldRay.origin + result.t * worldRay.direction;
         worldRay.direction = normalize(reflect(worldRay.direction, result.normal));
@@ -368,7 +376,8 @@ fn hitTriangle(
         renderState.normal = mat3x3<f32>(triangle.normalA, triangle.normalB, triangle.normalC) * vec3<f32>(w, u, v);
         // renderState.normal = normalize(cross(edge1, edge2));
         renderState.t = t;
-        renderState.texCoord = mat3x2<f32>(triangle.textureA, triangle.textureC, triangle.textureB) * vec3<f32>(w, u, v);
+        renderState.texCoord = mat3x2<f32>(triangle.textureA, triangle.textureB, triangle.textureC) * vec3<f32>(w, u, v);
+        renderState.texCoord.y = 1 - renderState.texCoord.y;
         renderState.hit = true;
         return renderState;
     }
