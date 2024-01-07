@@ -14,13 +14,13 @@ struct SceneParameters {
 // }
 
 struct Triangle {
-    cornerA: vec3<f32>, //f32
-    normalA: vec3<f32>, //f32
+    cornerA: vec3<f32>, 
+    normalA: vec3<f32>, 
     textureA: vec2<f32>,
-    cornerB: vec3<f32>, //f32
-    normalB: vec3<f32>, //f32
+    cornerB: vec3<f32>, 
+    normalB: vec3<f32>, 
     textureB: vec2<f32>,
-    cornerC: vec3<f32>, //f32
+    cornerC: vec3<f32>, 
     normalC: vec3<f32>,
     textureC: vec2<f32>,
     color: vec3<f32>
@@ -28,14 +28,15 @@ struct Triangle {
 
 struct Node {
     minCorner: vec3<f32>,
-    leftChild: f32,
+    leftChildIndex: f32,
     maxCorner: vec3<f32>,
     primitiveCount: f32,
 }
 
 struct BLAS {
     inverseModel: mat4x4<f32>,
-    rootNodeIndex: vec4<f32>,
+    rootNodeIndex: f32,
+    triangleLookupOffset: f32,
 }
 
 struct Ray {
@@ -87,7 +88,7 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     var rayColor: vec3<f32> = result.rgb;
     var skyboxColor: vec3<f32> = textureSampleLevel(skyTex, texSamp, ray.direction, 0.0).rgb;
 
-    let MAX_DISTANCE: f32 = 50;
+    let MAX_DISTANCE: f32 = 30;
     var intensity = clamp((MAX_DISTANCE - result.w) / MAX_DISTANCE, 0, 1);
     var pixelColor = rayColor * intensity + skyboxColor * (1 - intensity);
 
@@ -120,8 +121,6 @@ fn rayColor(ray: Ray) -> vec4<f32> {
             break;
         }
 
-        // Else there was a hit...
- 
         color = (color * sumFactor + textureSampleLevel(meshTex, texSamp, result.texCoord, 0.0).rgb * affectFactor) / nextSumFactor;
 
         affectFactor /= 2.0;
@@ -147,7 +146,7 @@ fn traceTLAS(ray: Ray) -> RenderState {
 
     while (true) {
         var primitiveCount: u32 = u32(node.primitiveCount);
-        var nodeIndex: u32 = u32(node.leftChild);
+        var nodeIndex: u32 = u32(node.leftChildIndex);
 
         if (primitiveCount == 0) {
             var iChild1: u32 = nodeIndex;
@@ -231,7 +230,7 @@ fn traceBLAS(
     blasRenderState.hit = false;
 
     // Setup BVH
-    var node: Node = tree[u32(blas.rootNodeIndex.x)];
+    var node: Node = tree[u32(blas.rootNodeIndex)];
     var stack: array<u32, STACK_SIZE>;
     var stackLocation: u32 = 0;
 
@@ -239,7 +238,7 @@ fn traceBLAS(
 
     while (true) {
         var primitiveCount: u32 = u32(node.primitiveCount);
-        var nodeIndex: u32 = u32(node.leftChild);
+        var nodeIndex: u32 = u32(node.leftChildIndex);
 
         if (primitiveCount == 0) {
             var iChild1: u32 = nodeIndex;
@@ -280,7 +279,7 @@ fn traceBLAS(
             for (var i: u32 = 0; i < primitiveCount; i++) {
                 var newRenderState: RenderState = hitTriangle(
                     objectRay, 
-                    triangles[u32(triangleLookup[i + nodeIndex])], 
+                    triangles[u32(triangleLookup[i + nodeIndex + u32(blas.triangleLookupOffset)])], 
                     0.001, blasNearestHit, blasRenderState
                 );
 
@@ -308,31 +307,6 @@ fn traceBLAS(
 
     return blasRenderState;
 }
-
-// fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldRenderState: RenderState) -> RenderState {
-//     let a: f32 = dot(ray.direction, ray.direction);
-//     let b: f32 = 2.0 * dot(ray.direction, ray.origin - sphere.center);
-//     let c: f32 = dot(ray.origin - sphere.center, ray.origin - sphere.center) - sphere.radius * sphere.radius;
-//     let discriminant: f32 =  b * b - 4 * a * c;
-
-//     var renderState: RenderState;
-//     renderState.texCoord = oldRenderState.texCoord;
-
-//     if (discriminant > 0.0) {
-//         let t: f32 = (-b -sqrt(discriminant)) / (2 * a);
-//         if (t > tMin && t < tMax) {
-//             renderState.position = ray.origin + t * ray.direction;
-//             renderState.normal = normalize(renderState.position - sphere.center);
-//             renderState.t = t;
-//             renderState.texCoord = sphere.texCoord;
-//             renderState.hit = true;
-//             return renderState;
-//         }
-//     }
-
-//     renderState.hit = false;
-//     return renderState;
-// }
 
 // https://www.graphics.cornell.edu/pubs/1997/MT97.pdf
 fn hitTriangle(

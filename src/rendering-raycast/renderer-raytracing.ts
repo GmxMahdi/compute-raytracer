@@ -161,6 +161,8 @@ export class RendererRaytracing {
         for (let i = 0; i < this.scene.blasList.length; ++i) {
             blasData.set(this.scene.blasList[i].inverseModel, 20 * i);
             blasData.set([this.scene.blasList[i].rootNodeIndex], 20 * i + 16);
+            blasData.set([this.scene.blasList[i].triangleLookupIndex], 20 * i + 17);
+
         }
         this.device.queue.writeBuffer(this.blasBuffer, 0, blasData, 0, 20 * this.scene.blasList.length);
 
@@ -200,8 +202,8 @@ export class RendererRaytracing {
         this.device.queue.writeBuffer(this.triangleBuffer, 0, triangleData, 0, 40 * this.scene.triangles.length);
 
         // BLAS Nodes
-        const nodeDataB = new Float32Array(8 * this.scene.mesh.bvh.nodesUsed);
-        for (let i = 0; i < this.scene.mesh.bvh.nodesUsed; ++i) {
+        const nodeDataB = new Float32Array(8 * this.scene.meshes[0].bvh.nodesUsed);
+        for (let i = 0; i < this.scene.meshes[0].bvh.nodesUsed; ++i) {
             const baseIndex: number = this.scene.tlasNodesMax + i;
             const node = this.scene.nodes[baseIndex];
             const loc = 8 * i;
@@ -211,7 +213,7 @@ export class RendererRaytracing {
             nodeDataB.set([node.primitiveCount], loc + 7);
         }
         let bufferOffset: number = 32 * this.scene.tlasNodesMax;
-        this.device.queue.writeBuffer(this.nodeBuffer, bufferOffset, nodeDataB, 0, 8 * this.scene.mesh.bvh.nodesUsed);
+        this.device.queue.writeBuffer(this.nodeBuffer, bufferOffset, nodeDataB, 0, 8 * this.scene.meshes[0].bvh.nodesUsed);
 
         const triangleIndexData = new Float32Array(this.scene.triangles.length);
         for (let i = 0; i < this.scene.triangles.length; ++i) {

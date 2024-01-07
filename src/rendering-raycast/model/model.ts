@@ -5,8 +5,10 @@ export class Model {
     model: mat4;
     position: vec3;
     eulers: vec3;
+    meshIndex: number = 0;
 
-    constructor(position: vec3, eulers: vec3) {
+    constructor(meshIndex: number, position: vec3, eulers: vec3) {
+        this.meshIndex = meshIndex;
         this.position = position;
         this.eulers = eulers;
         this.calculateTransform();

@@ -4,9 +4,10 @@ import { ObjectReader } from "./model/reader/obj-reader";
 import { BVH } from "./acceleration/bvh";
 import { vec3 } from "gl-matrix";
 
-export class ObjectMesh {    
+export class Mesh {    
     color: vec3;
     triangles: Triangle[];
+    triangleLookupOffset: number = 0;
     bvh: BVH;
 
     constructor() {}

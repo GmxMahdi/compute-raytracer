@@ -6,6 +6,7 @@ export class BLAS {
     center: vec3;
     inverseModel: mat4 = mat4.create();
     rootNodeIndex: number;
+    triangleLookupIndex: number = 0;
 
     constructor(minCorner: vec3, maxCorner: vec3, model: mat4) {
         const DEFAULT = 999999;
