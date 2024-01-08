@@ -1,4 +1,5 @@
 
+import * as dat from 'dat.gui';
 import { RendererRaytracing } from "./rendering-raycast/renderer-raytracing";
 import { SceneRaytracing } from "./rendering-raycast/scene-raytracing";
 
@@ -31,20 +32,14 @@ export class App {
     }
 
     async initialize() {
-        this.scene = new SceneRaytracing();
-        await this.scene.createScene();
-
-        let width = Math.floor(document.body.clientWidth * 0.9);
-        let height = Math.floor(document.body.clientHeight * 0.9);
-        this.renderer = new RendererRaytracing(this.canvas, width, height, this.scene);
-
+        // Labels
         this.fpsLabel = document.getElementById('current-fps');
         this.primitiveCountLabel = document.getElementById('sphere-count');
-        this.primitiveCountLabel.innerText = this.scene.triangles.length.toString();
         this.keyLabel = document.getElementById('current-key');
         this.mouseXLabel = document.getElementById('mouse-x');
         this.mouseYLabel = document.getElementById('mouse-y');
 
+        // Listeners
         document.addEventListener('keydown', (event: KeyboardEvent) => this.handleKeyDownEvent(event));
         document.addEventListener('keyup', (event: KeyboardEvent) => this.handleKeyUpEvent(event));
         document.addEventListener("pointerlockchange", () => this.handlePointerLockChange(), false);
@@ -54,12 +49,45 @@ export class App {
         }
         this.canvas.addEventListener('mousemove', (event: MouseEvent) => this.handleMouseMove(event));
 
+        // WebGPU
+        let width = Math.floor(document.body.clientWidth * 0.7);
+        let height = Math.floor(document.body.clientHeight * 0.9);
+
+        this.scene = new SceneRaytracing();
+        await this.scene.createScene();
+
+        this.renderer = new RendererRaytracing(this.canvas, width, height, this.scene);
         await this.renderer.initialize();
+
+        // dat.GUI
+        this.setupGUI();
+
+        // Other label sets
+        this.primitiveCountLabel.innerText = this.scene.triangles.length.toString();
     }
 
     run() {
         this.lastTimeStamp = <number> document.timeline.currentTime;
         requestAnimationFrame(this._run);
+    }
+
+    private setupGUI () {
+        let gui = new dat.GUI({name: 'WebGPU GUI'});
+        const kernelSettings = {
+            kernel: 'raytracer',
+        };
+        
+        const kernelController = gui.add(kernelSettings, 'kernel', [
+            'raytracer',
+            'heatmap',
+        ]);
+
+        kernelController.listen();
+        kernelController.onChange((kernel: string) => {
+            if (kernel === 'raytracer') this.renderer.showRaytracer();
+            if (kernel === 'heatmap') this.renderer.showHeatmap();
+        })
+        document.getElementById('container').append(gui.domElement);
     }
 
     private _run = (timeStamp: number) => {

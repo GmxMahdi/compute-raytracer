@@ -1,6 +1,7 @@
 import { SceneRaytracing } from './scene-raytracing';
 import { CubemapMaterial } from '../material/cubemap-material';
 import shaderRaytracerKernel from './shaders/raytracer-kernel.wgsl?raw';
+import shaderHeatmapKernel from './shaders/heatmap-kernel.wgsl?raw';
 import shaderScreen from './shaders/screen-shader.wgsl?raw';
 import urlSkybox from '../assets/images/daylight-skybox.png';
 import urlMouseyTexture from '../assets/models/mousey/mousey_Diffuse.png';
@@ -11,44 +12,43 @@ import { Material } from '../material/material';
 
 export class RendererRaytracing {
 
-    width: number = 900;
-    height: number = 600;
-    canvas: HTMLCanvasElement;
-
-    dt: number = 0;
-    lastTimeElasped: number = 0;
+    private width: number = 900;
+    private height: number = 600;
+    private canvas: HTMLCanvasElement;
 
     // Device/Context objects
-    adapter: GPUAdapter;
-    device: GPUDevice;
-    context: GPUCanvasContext;
-    format : GPUTextureFormat;
+    private adapter: GPUAdapter;
+    private device: GPUDevice;
+    private context: GPUCanvasContext;
+    private format : GPUTextureFormat;
 
 
     // Assets
-    colorBuffer: GPUTexture;
-    colorBufferView: GPUTextureView;
-    sampler: GPUSampler;
-    sceneParameters: GPUBuffer;
-    triangleBuffer: GPUBuffer;
-    mouseyMaterial: Material;
-    skyboxMaterial : CubemapMaterial;
+    private colorBuffer: GPUTexture;
+    private colorBufferView: GPUTextureView;
+    private sampler: GPUSampler;
+    private sceneParameters: GPUBuffer;
+    private triangleBuffer: GPUBuffer;
+    private mouseyMaterial: Material;
+    private skyboxMaterial : CubemapMaterial;
     
-    nodeBuffer: GPUBuffer;
-    blasBuffer: GPUBuffer;
-    blasIndexBuffer: GPUBuffer
-    triangleIndexBuffer: GPUBuffer;
+    private nodeBuffer: GPUBuffer;
+    private blasBuffer: GPUBuffer;
+    private blasIndexBuffer: GPUBuffer
+    private triangleIndexBuffer: GPUBuffer;
 
     // Pipeline Objects
-    raytracingPipeline: GPUComputePipeline;
-    raytracingBindGroup: GPUBindGroup;
+    private selectedComputePipeline: GPUComputePipeline; // Reference to one of the pipelines
+    private heatmapPipeline: GPUComputePipeline;
+    private raytracingPipeline: GPUComputePipeline;
+    private computeBindGroup: GPUBindGroup;
 
-    renderPipeline: GPURenderPipeline;
-    renderBindGroup: GPUBindGroup;
+    private renderPipeline: GPURenderPipeline;
+    private renderBindGroup: GPUBindGroup;
 
     // Scene
-    scene: SceneRaytracing;
-    loaded: boolean = false;
+    private scene: SceneRaytracing;
+    private loaded: boolean = false;
 
     constructor(canvas: HTMLCanvasElement, width: number, height: number, scene: SceneRaytracing){
         this.scene = scene;
@@ -67,7 +67,15 @@ export class RendererRaytracing {
         await this.makePipeline();
     }
 
-    async setupDevice() {
+    showRaytracer() {
+        this.selectedComputePipeline = this.raytracingPipeline;
+    }
+
+    showHeatmap() {
+        this.selectedComputePipeline = this.heatmapPipeline;
+    }
+
+    private async setupDevice() {
 
         //adapter: wrapper around (physical) GPU.
         //Describes features and limits
@@ -88,7 +96,7 @@ export class RendererRaytracing {
 
     }
 
-    async createAssets() {
+    private async createAssets() {
         this.skyboxMaterial = new CubemapMaterial();
         await this.skyboxMaterial.intiialize(this.device, urlSkybox);
         this.colorBuffer = this.device.createTexture({
@@ -144,7 +152,7 @@ export class RendererRaytracing {
         });
     }
 
-    recalculateScene() {
+    private recalculateScene() {
         // Scene parameters
         const maxBounces: number = 4;
         const sceneParametersData = new Float32Array(16);
@@ -220,10 +228,10 @@ export class RendererRaytracing {
         this.device.queue.writeBuffer(this.triangleIndexBuffer, 0, triangleIndexData, 0, this.scene.triangleIndices.length);
     }
 
-    async makePipeline() {
+    private async makePipeline() {
 
         // Raytracing Kernel
-        let bindGroupLayout = this.device.createBindGroupLayout({
+        let computeBindGroupLayout = this.device.createBindGroupLayout({
             entries: [
                 {
                     binding: 0,
@@ -282,8 +290,8 @@ export class RendererRaytracing {
             ]
         });
 
-        this.raytracingBindGroup = this.device.createBindGroup({
-            layout: bindGroupLayout,
+        this.computeBindGroup = this.device.createBindGroup({
+            layout: computeBindGroupLayout,
             entries: [
                 {
                     binding: 0,
@@ -340,22 +348,36 @@ export class RendererRaytracing {
             ]
         });
 
-        let pipelineLayout = this.device.createPipelineLayout({
-            bindGroupLayouts: [bindGroupLayout],
+        let computePipelineLayout = this.device.createPipelineLayout({
+            bindGroupLayouts: [computeBindGroupLayout],
         });
 
         this.raytracingPipeline = this.device.createComputePipeline({
-            layout: pipelineLayout,
+            layout: computePipelineLayout,
             compute: {
                 module: this.device.createShaderModule({
                     code: shaderRaytracerKernel
                 }),
                 entryPoint: 'main'
             }
-        })
+        });
+
+        this.heatmapPipeline = this.device.createComputePipeline({
+            layout: computePipelineLayout,
+            compute: {
+                module: this.device.createShaderModule({
+                    code: shaderHeatmapKernel
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        this.selectedComputePipeline = this.raytracingPipeline;
+
+        
 
         // Screen Render
-        bindGroupLayout = this.device.createBindGroupLayout({
+        let renderBindGroupLayout = this.device.createBindGroupLayout({
             entries: [
                 {
                     binding: 0,
@@ -371,7 +393,7 @@ export class RendererRaytracing {
         });
 
         this.renderBindGroup = this.device.createBindGroup({
-            layout: bindGroupLayout,
+            layout: renderBindGroupLayout,
             entries: [
                 {
                     binding: 0,
@@ -384,12 +406,12 @@ export class RendererRaytracing {
             ]
         });
 
-        pipelineLayout = this.device.createPipelineLayout({
-            bindGroupLayouts: [bindGroupLayout],
+        let renderPipelineLayout = this.device.createPipelineLayout({
+            bindGroupLayouts: [renderBindGroupLayout],
         });
 
         this.renderPipeline = this.device.createRenderPipeline({
-            layout: pipelineLayout,
+            layout: renderPipelineLayout,
             vertex: {
                 module: this.device.createShaderModule({
                     code: shaderScreen
@@ -417,8 +439,8 @@ export class RendererRaytracing {
         const commandEncoder : GPUCommandEncoder = this.device.createCommandEncoder();
 
         const raytracerPass : GPUComputePassEncoder = commandEncoder.beginComputePass();
-        raytracerPass.setPipeline(this.raytracingPipeline);
-        raytracerPass.setBindGroup(0, this.raytracingBindGroup);
+        raytracerPass.setPipeline(this.selectedComputePipeline);
+        raytracerPass.setBindGroup(0, this.computeBindGroup);
         raytracerPass.dispatchWorkgroups(Math.ceil(this.canvas.width / 8), Math.ceil(this.canvas.height / 8), 1);
         raytracerPass.end();
 

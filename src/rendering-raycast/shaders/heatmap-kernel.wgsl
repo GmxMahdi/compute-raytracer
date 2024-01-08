@@ -6,12 +6,6 @@ struct SceneParameters {
     maxBounces: f32,
 }
 
-// struct Sphere {
-//     center: vec3<f32>,
-//     color: vec3<f32>,
-//     radius: f32
-// }
-
 struct Triangle {
     cornerA: vec3<f32>, //f32
     normalA: vec3<f32>, //f32
