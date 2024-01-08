@@ -8,7 +8,8 @@ export class BLAS {
     rootNodeIndex: number;
     triangleLookupIndex: number = 0;
 
-    constructor(minCorner: vec3, maxCorner: vec3, model: mat4) {
+    constructor(rootNodeIndex: number, minCorner: vec3, maxCorner: vec3, model: mat4) {
+        this.rootNodeIndex = rootNodeIndex;
         const DEFAULT = 999999;
         this.minCorner = [DEFAULT, DEFAULT, DEFAULT];
         this.maxCorner = [-DEFAULT, -DEFAULT, -DEFAULT];

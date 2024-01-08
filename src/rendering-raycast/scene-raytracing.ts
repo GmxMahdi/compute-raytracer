@@ -24,6 +24,7 @@ export class SceneRaytracing {
 
     nodes: Node[];
     nodesUsed: number = 0;
+    blasNodesUsed: number = 0;
 
     meshes: Mesh[];
     models: Model[];
@@ -36,22 +37,28 @@ export class SceneRaytracing {
         this.camera = new Camera([0.0593, 2.692, 3.293], 106, 270);
 
         let mouseyMesh = new Mesh();
-        await mouseyMesh.initialize(urlMouseyObj, {
+        await mouseyMesh.initialize(urlCatObj, {
             color: [0.8, 0.6, 0.7],
             alignBottom: true,
             invertYZ: false,
-            scale: 0.025
+            scale: 0.1
         });
+        // await mouseyMesh.initialize(urlMouseyObj, {
+        //     color: [0.8, 0.6, 0.7],
+        //     alignBottom: true,
+        //     invertYZ: false,
+        //     scale: 0.025
+        // });
 
         let catMesh = new Mesh();
         await catMesh.initialize(urlCatObj, {
             color: [0.8, 0.6, 0.7],
             alignBottom: true,
             invertYZ: false,
-            scale: 1
+            scale: 0.2
         });
 
-        this.meshes = [mouseyMesh, catMesh];
+        this.meshes = [catMesh, mouseyMesh];
 
 
         // Populate triangle array from our mesh
@@ -64,27 +71,34 @@ export class SceneRaytracing {
 
         // Set indices
         this.triangleIndices = new Array(this.triangles.length);
-        for (const mesh of this.meshes) {
-            for (let i = mesh.triangleLookupOffset; i < mesh.triangles.length + mesh.triangleLookupOffset; ++i)
-                this.triangleIndices[i] = mesh.bvh.triangleIndices[i];
+        {
+            let i = 0;
+            for (const mesh of this.meshes) {
+                for (let j = 0; j < mesh.bvh.triangleIndices.length; ++j) {
+                    this.triangleIndices[i] = mesh.bvh.triangleIndices[j];
+                    ++i;
+                }
+            }
         }
 
         // Initialize models
         this.models = [];
-        for (let z = 0; z < 1; ++z)
+        for (let z = 0; z < 2; ++z)
             for (let x = 0; x < 2; ++x)
                 this.models.push(new Model(x, [5 * x, 0, 5 * z], [180, 45 * x, 0]));
 
 
         this.tlasNodesMax = 2 * this.models.length - 1;
 
-        let blasNodeUsed: number = -1;
+        let nbBlasNodeUsed: number = 0;
         for (const mesh of this.meshes) {
-            blasNodeUsed = Math.max(blasNodeUsed, mesh.bvh.nodesUsed);
+            mesh.rootNodeIndex = this.tlasNodesMax + nbBlasNodeUsed;
+            nbBlasNodeUsed += mesh.bvh.nodesUsed;
         }
+        this.blasNodesUsed = nbBlasNodeUsed;
 
         // Initialize TLAS nodes
-        this.nodes = new Array(this.tlasNodesMax + blasNodeUsed);
+        this.nodes = new Array(this.tlasNodesMax + nbBlasNodeUsed);
         for (var i: number = 0; i < this.tlasNodesMax; i += 1) {
             const node = new Node();
             node.leftChildIndex = 0;
@@ -100,8 +114,8 @@ export class SceneRaytracing {
     }
 
     update(dt: number) {
-        for (const model of this.models)
-            model.update(dt);
+        // for (const model of this.models)
+        //     model.update(dt);
 
         this.buildBVH();
     }
@@ -121,12 +135,14 @@ export class SceneRaytracing {
 
         // Calculate BLASes
         for (let i: number = 0; i < this.models.length; ++i) {
+            const model = this.models[i];
+            const mesh = this.meshes[model.meshIndex];
             var blas: BLAS = new BLAS(
-                this.meshes[this.models[i].meshIndex].bvh.minCorner,
-                this.meshes[this.models[i].meshIndex].bvh.maxCorner,
-                this.models[i].model
+                mesh.rootNodeIndex,
+                mesh.bvh.minCorner,
+                mesh.bvh.maxCorner,
+                model.model
             );
-            blas.rootNodeIndex = this.tlasNodesMax;
             this.blasList[i] = blas;
             this.blasIndices[i] = i;
         }
@@ -216,12 +232,21 @@ export class SceneRaytracing {
     }
 
     private finalizeBVH() {
-        for (let i = 0; i < this.meshes[0].bvh.nodesUsed; ++i) {
-            let nodeToUpload = this.meshes[0].bvh.nodes[i];
-            if (nodeToUpload.primitiveCount == 0) {
-                nodeToUpload.leftChildIndex += this.tlasNodesMax;
+        for (const mesh of this.meshes) {
+            console.log(mesh.bvh.nodesUsed, mesh.bvh.nodes.length);
+            for (let i = 0; i < mesh.bvh.nodesUsed; ++i) {
+                let meshNode = mesh.bvh.nodes[i];
+
+                // If has a subset of AABB
+                if (meshNode.primitiveCount == 0) {
+                    meshNode.leftChildIndex += this.tlasNodesMax + this.meshes[0].bvh.nodesUsed;
+                }
+                // Else has a subset of triangles
+                else {
+                    meshNode.leftChildIndex += mesh.triangleLookupOffset;
+                }
+                this.nodes[mesh.rootNodeIndex + i] = meshNode;
             }
-            this.nodes[this.tlasNodesMax + i] = nodeToUpload;
         }
     }
 }

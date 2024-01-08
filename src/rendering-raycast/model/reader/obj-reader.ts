@@ -4,9 +4,9 @@ import { ObjectReaderDescriptor } from "./obj-reader-descriptior";
 
 export class ObjectReader {
     private static color: vec3;
-    private static v: vec3[]
-    private static vt: vec2[]
-    private static vn: vec3[]
+    private static v: vec3[] = [];
+    private static vt: vec2[] = [];
+    private static vn: vec3[] = [];
 
     private static mins: vec3 = [0, 0, 0];
     private static maxs: vec3 = [0, 0, 0];
@@ -44,10 +44,6 @@ export class ObjectReader {
     }
 
     private static async createMeshFromFile(url: string): Promise<Triangle[]> {
-        // Clear buffers
-        this.v = [];
-        this.vt = [];
-        this.vn = [];
         let triangles: Triangle[] = [];
 
         const response: Response = await fetch(url);

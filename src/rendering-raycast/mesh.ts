@@ -8,6 +8,7 @@ export class Mesh {
     color: vec3;
     triangles: Triangle[];
     triangleLookupOffset: number = 0;
+    rootNodeIndex: number = 0;
     bvh: BVH;
 
     constructor() {}

@@ -10,7 +10,7 @@ export class App {
     nbSpheres: number = 10;
 
     fpsLabel: HTMLElement;
-    sphereCountLabel: HTMLElement;
+    primitiveCountLabel: HTMLElement;
     keyLabel: HTMLElement;
     mouseXLabel: HTMLElement;
     mouseYLabel: HTMLElement;
@@ -39,8 +39,8 @@ export class App {
         this.renderer = new RendererRaytracing(this.canvas, width, height, this.scene);
 
         this.fpsLabel = document.getElementById('current-fps');
-        this.sphereCountLabel = document.getElementById('sphere-count');
-        this.sphereCountLabel.innerText = this.scene.triangles.length.toString();
+        this.primitiveCountLabel = document.getElementById('sphere-count');
+        this.primitiveCountLabel.innerText = this.scene.triangles.length.toString();
         this.keyLabel = document.getElementById('current-key');
         this.mouseXLabel = document.getElementById('mouse-x');
         this.mouseYLabel = document.getElementById('mouse-y');

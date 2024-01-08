@@ -36,7 +36,6 @@ struct Node {
 struct BLAS {
     inverseModel: mat4x4<f32>,
     rootNodeIndex: f32,
-    triangleLookupOffset: f32,
 }
 
 struct Ray {
@@ -145,22 +144,22 @@ fn traceTLAS(ray: Ray) -> RenderState {
     var stackLocation: u32 = 0;
 
     while (true) {
-        var primitiveCount: u32 = u32(node.primitiveCount);
-        var nodeIndex: u32 = u32(node.leftChildIndex);
+        var modelCount: u32 = u32(node.primitiveCount);
+        var leftChildNodeIndex: u32 = u32(node.leftChildIndex);
 
-        if (primitiveCount == 0) {
-            var iChild1: u32 = nodeIndex;
-            var iChild2: u32 = nodeIndex + 1;
-            var distance1: f32 = hitAABB(ray, tree[nodeIndex]);
-            var distance2: f32 = hitAABB(ray, tree[nodeIndex + 1]);
+        if (modelCount == 0) {
+            var iChild1: u32 = leftChildNodeIndex;
+            var iChild2: u32 = leftChildNodeIndex + 1;
+            var distance1: f32 = hitAABB(ray, tree[leftChildNodeIndex]);
+            var distance2: f32 = hitAABB(ray, tree[leftChildNodeIndex + 1]);
 
             // If child2 closer, test collision child2 first.
             if (distance1 > distance2) {
                 var tempDist: f32 = distance1;
                 distance1 = distance2;
                 distance2 = tempDist;
-                iChild1 = nodeIndex + 1;
-                iChild2 = nodeIndex;
+                iChild1 = leftChildNodeIndex + 1;
+                iChild2 = leftChildNodeIndex;
             }
 
             if (distance1 > nearestHit) {
@@ -177,7 +176,7 @@ fn traceTLAS(ray: Ray) -> RenderState {
                 if (distance2 < nearestHit) {
                     stack[stackLocation] = iChild2;
                     stackLocation += 1;
-                    if (stackLocation >= STACK_SIZE) {
+                    if (stackLocation > STACK_SIZE) {
                         stackLocation = STACK_SIZE -1;
                     }
                 }
@@ -185,10 +184,10 @@ fn traceTLAS(ray: Ray) -> RenderState {
         }
         else {
             // Perform collison tests inside node
-            for (var i: u32 = 0; i < primitiveCount; i++) {
+            for (var i: u32 = 0; i < modelCount; i++) {
                 var newRenderState: RenderState = traceBLAS(
                     ray, 
-                    blasList[u32(blasLookup[i + nodeIndex])], 
+                    blasList[u32(blasLookup[i + leftChildNodeIndex])], 
                     nearestHit, renderState
                 );
 
@@ -238,14 +237,14 @@ fn traceBLAS(
 
     while (true) {
         var primitiveCount: u32 = u32(node.primitiveCount);
-        var nodeIndex: u32 = u32(node.leftChildIndex);
+        var leftChildNodeIndex: u32 = u32(node.leftChildIndex);
 
         if (primitiveCount == 0) {
-            var iChild1: u32 = nodeIndex;
-            var iChild2: u32 = nodeIndex + 1;
+            var iChild1: u32 = leftChildNodeIndex;
+            var iChild2: u32 = leftChildNodeIndex + 1;
 
-            var distance1: f32 = hitAABB(objectRay, tree[nodeIndex]);
-            var distance2: f32 = hitAABB(objectRay, tree[nodeIndex + 1]);
+            var distance1: f32 = hitAABB(objectRay, tree[leftChildNodeIndex]);
+            var distance2: f32 = hitAABB(objectRay, tree[leftChildNodeIndex + 1]);
 
             // If child2 closer, test collision child2 first.
             if (distance1 > distance2) {
@@ -253,8 +252,8 @@ fn traceBLAS(
                 distance1 = distance2;
                 distance2 = tempDist;
 
-                iChild1 = nodeIndex + 1;
-                iChild2 = nodeIndex;
+                iChild1 = leftChildNodeIndex + 1;
+                iChild2 = leftChildNodeIndex;
             }
 
             if (distance1 > blasNearestHit) {
@@ -279,7 +278,7 @@ fn traceBLAS(
             for (var i: u32 = 0; i < primitiveCount; i++) {
                 var newRenderState: RenderState = hitTriangle(
                     objectRay, 
-                    triangles[u32(triangleLookup[i + nodeIndex + u32(blas.triangleLookupOffset)])], 
+                    triangles[u32(triangleLookup[i + leftChildNodeIndex])], 
                     0.001, blasNearestHit, blasRenderState
                 );
 
