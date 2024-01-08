@@ -9,6 +9,7 @@ import { BLAS } from "./acceleration/blas";
 import urlMouseyObj from "../assets/models/mousey/mousey.obj?url";
 import urlCatObj from '../assets/models/cat.obj?url';
 import { Mode } from "fs";
+import { off } from "process";
 
 export class SceneRaytracing {
     camera: Camera
@@ -23,7 +24,7 @@ export class SceneRaytracing {
     blasConsumed: boolean = false;
 
     nodes: Node[];
-    nodesUsed: number = 0;
+    tlasNodesUsed: number = 0;
     blasNodesUsed: number = 0;
 
     meshes: Mesh[];
@@ -37,25 +38,19 @@ export class SceneRaytracing {
         this.camera = new Camera([0.0593, 2.692, 3.293], 106, 270);
 
         let mouseyMesh = new Mesh();
-        await mouseyMesh.initialize(urlCatObj, {
+        await mouseyMesh.initialize(urlMouseyObj, {
             color: [0.8, 0.6, 0.7],
             alignBottom: true,
             invertYZ: false,
-            scale: 0.1
+            scale: 0.025
         });
-        // await mouseyMesh.initialize(urlMouseyObj, {
-        //     color: [0.8, 0.6, 0.7],
-        //     alignBottom: true,
-        //     invertYZ: false,
-        //     scale: 0.025
-        // });
 
         let catMesh = new Mesh();
         await catMesh.initialize(urlCatObj, {
             color: [0.8, 0.6, 0.7],
             alignBottom: true,
             invertYZ: false,
-            scale: 0.2
+            scale: 0.1
         });
 
         this.meshes = [catMesh, mouseyMesh];
@@ -65,19 +60,20 @@ export class SceneRaytracing {
         this.triangles = [];
         for (const mesh of this.meshes) {
             mesh.triangleLookupOffset = this.triangles.length;
-            for (const triangle of mesh.triangles)
-                this.triangles.push(triangle);
+            this.triangles.push(...mesh.triangles);
         }
 
         // Set indices
         this.triangleIndices = new Array(this.triangles.length);
         {
             let i = 0;
+            let offset = 0;
             for (const mesh of this.meshes) {
                 for (let j = 0; j < mesh.bvh.triangleIndices.length; ++j) {
-                    this.triangleIndices[i] = mesh.bvh.triangleIndices[j];
+                    this.triangleIndices[i] = mesh.bvh.triangleIndices[j] + offset;
                     ++i;
                 }
+                offset += mesh.bvh.triangleIndices.length;
             }
         }
 
@@ -90,15 +86,14 @@ export class SceneRaytracing {
 
         this.tlasNodesMax = 2 * this.models.length - 1;
 
-        let nbBlasNodeUsed: number = 0;
+        this.blasNodesUsed = 0;
         for (const mesh of this.meshes) {
-            mesh.rootNodeIndex = this.tlasNodesMax + nbBlasNodeUsed;
-            nbBlasNodeUsed += mesh.bvh.nodesUsed;
+            mesh.rootNodeIndex = this.tlasNodesMax + this.blasNodesUsed;
+            this.blasNodesUsed += mesh.bvh.nodesUsed;
         }
-        this.blasNodesUsed = nbBlasNodeUsed;
 
         // Initialize TLAS nodes
-        this.nodes = new Array(this.tlasNodesMax + nbBlasNodeUsed);
+        this.nodes = new Array(this.tlasNodesMax + this.blasNodesUsed);
         for (var i: number = 0; i < this.tlasNodesMax; i += 1) {
             const node = new Node();
             node.leftChildIndex = 0;
@@ -114,14 +109,14 @@ export class SceneRaytracing {
     }
 
     update(dt: number) {
-        // for (const model of this.models)
-        //     model.update(dt);
+        for (const model of this.models)
+            model.update(dt);
 
         this.buildBVH();
     }
 
     private buildBVH() {
-        this.nodesUsed = 0;
+        this.tlasNodesUsed = 0;
         this.blasList = new Array(this.models.length);
         this.blasIndices = new Array(this.models.length);
 
@@ -150,7 +145,7 @@ export class SceneRaytracing {
         var root: Node = this.nodes[0];
         root.leftChildIndex = 0;
         root.primitiveCount = this.blasList.length;
-        this.nodesUsed += 1;
+        this.tlasNodesUsed += 1;
 
         this.updateBounds(0);
         this.subdivide(0);
@@ -211,10 +206,10 @@ export class SceneRaytracing {
             return;
         }
 
-        const leftChildIndex: number = this.nodesUsed;
-        this.nodesUsed += 1;
-        const rightChildIndex: number = this.nodesUsed;
-        this.nodesUsed += 1;
+        const leftChildIndex: number = this.tlasNodesUsed;
+        this.tlasNodesUsed += 1;
+        const rightChildIndex: number = this.tlasNodesUsed;
+        this.tlasNodesUsed += 1;
 
         this.nodes[leftChildIndex].leftChildIndex = node.leftChildIndex;
         this.nodes[leftChildIndex].primitiveCount = leftCount;
@@ -233,13 +228,12 @@ export class SceneRaytracing {
 
     private finalizeBVH() {
         for (const mesh of this.meshes) {
-            console.log(mesh.bvh.nodesUsed, mesh.bvh.nodes.length);
             for (let i = 0; i < mesh.bvh.nodesUsed; ++i) {
                 let meshNode = mesh.bvh.nodes[i];
 
                 // If has a subset of AABB
                 if (meshNode.primitiveCount == 0) {
-                    meshNode.leftChildIndex += this.tlasNodesMax + this.meshes[0].bvh.nodesUsed;
+                    meshNode.leftChildIndex += mesh.rootNodeIndex;
                 }
                 // Else has a subset of triangles
                 else {

@@ -10,9 +10,8 @@ export class BLAS {
 
     constructor(rootNodeIndex: number, minCorner: vec3, maxCorner: vec3, model: mat4) {
         this.rootNodeIndex = rootNodeIndex;
-        const DEFAULT = 999999;
-        this.minCorner = [DEFAULT, DEFAULT, DEFAULT];
-        this.maxCorner = [-DEFAULT, -DEFAULT, -DEFAULT];
+        this.minCorner = [1e30, 1e30, 1e30];
+        this.maxCorner = [-1e30, -1e30, -1e30];
 
         const corners: vec3[] = [
             [minCorner[0], minCorner[1], minCorner[2]],

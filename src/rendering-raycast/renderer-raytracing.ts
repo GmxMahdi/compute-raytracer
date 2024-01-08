@@ -172,15 +172,15 @@ export class RendererRaytracing {
         this.device.queue.writeBuffer(this.blasIndexBuffer, 0, blasIndexData, 0, this.scene.blasIndices.length);
 
         // TLAS
-        const nodeDataA = new Float32Array(8 * this.scene.nodesUsed);
-        for (let i = 0; i < this.scene.nodesUsed; ++i) {
+        const nodeDataA = new Float32Array(8 * this.scene.tlasNodesUsed);
+        for (let i = 0; i < this.scene.tlasNodesUsed; ++i) {
             let loc = 8 * i;
             nodeDataA.set(this.scene.nodes[i].minCorner, loc);
             nodeDataA.set(this.scene.nodes[i].maxCorner, loc + 4);
             nodeDataA[loc + 3] = this.scene.nodes[i].leftChildIndex;
             nodeDataA[loc + 7] = this.scene.nodes[i].primitiveCount;
         }
-        this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeDataA, 0, 8 * this.scene.nodesUsed);
+        this.device.queue.writeBuffer(this.nodeBuffer, 0, nodeDataA, 0, 8 * this.scene.tlasNodesUsed);
 
         if (this.loaded) return;
         this.loaded = true;
