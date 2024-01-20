@@ -23,7 +23,7 @@ struct Triangle {
     cornerC: vec3<f32>, 
     normalC: vec3<f32>,
     textureC: vec2<f32>,
-    color: vec3<f32>
+    color: vec4<f32>
 }
 
 struct Node {
@@ -47,6 +47,7 @@ struct RenderState {
     distance: f32,
     t: f32,
     texCoord: vec2<f32>,
+    diffuse: vec4<f32>,
     hit: bool,
     normal: vec3<f32>
 }
@@ -120,7 +121,9 @@ fn rayColor(ray: Ray) -> vec4<f32> {
             break;
         }
 
-        color = (color * sumFactor + textureSampleLevel(meshTex, texSamp, result.texCoord, 0.0).rgb * affectFactor) / nextSumFactor;
+        var diffuseColor: vec3<f32> = result.diffuse.rgb * result.diffuse.w;
+        var samplerColor: vec3<f32> = textureSampleLevel(meshTex, texSamp, result.texCoord, 0.0).rgb * (1 - result.diffuse.w);
+        color = (color * sumFactor + (diffuseColor + samplerColor) * affectFactor) / nextSumFactor;
 
         affectFactor /= 2.0;
         sumFactor = nextSumFactor;
@@ -348,6 +351,7 @@ fn hitTriangle(
         let w = 1 - u - v;    
         renderState.normal = mat3x3<f32>(triangle.normalA, triangle.normalB, triangle.normalC) * vec3<f32>(w, u, v);
         // renderState.normal = normalize(cross(edge1, edge2));
+        renderState.diffuse = triangle.color;
         renderState.t = t;
         renderState.texCoord = mat3x2<f32>(triangle.textureA, triangle.textureB, triangle.textureC) * vec3<f32>(w, u, v);
         renderState.texCoord.y = 1 - renderState.texCoord.y;

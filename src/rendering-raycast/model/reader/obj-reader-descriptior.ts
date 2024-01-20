@@ -1,7 +1,7 @@
-import { vec3 } from "gl-matrix";
+import { vec4 } from "gl-matrix";
 
 export interface ObjectReaderDescriptor {
-    color: vec3, 
+    color: vec4, 
     invertYZ?: boolean, 
     alignBottom?: boolean, 
     scale?: number

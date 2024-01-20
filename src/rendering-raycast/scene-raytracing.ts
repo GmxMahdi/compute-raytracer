@@ -39,7 +39,7 @@ export class SceneRaytracing {
 
         let mouseyMesh = new Mesh();
         await mouseyMesh.initialize(urlMouseyObj, {
-            color: [0.8, 0.6, 0.7],
+            color: [1.0, 1.0, 1.0, 0.3],
             alignBottom: true,
             invertYZ: false,
             scale: 0.025
@@ -47,7 +47,7 @@ export class SceneRaytracing {
 
         let catMesh = new Mesh();
         await catMesh.initialize(urlCatObj, {
-            color: [0.8, 0.6, 0.7],
+            color: [0.8, 0.6, 0.7, 1.0],
             alignBottom: true,
             invertYZ: false,
             scale: 0.1

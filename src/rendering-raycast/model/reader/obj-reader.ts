@@ -1,9 +1,9 @@
-import { vec2, vec3 } from "gl-matrix";
+import { vec2, vec3, vec4 } from "gl-matrix";
 import { Triangle } from "../triangle";
 import { ObjectReaderDescriptor } from "./obj-reader-descriptior";
 
 export class ObjectReader {
-    private static color: vec3;
+    private static color: vec4;
     private static v: vec3[] = [];
     private static vt: vec2[] = [];
     private static vn: vec3[] = [];
