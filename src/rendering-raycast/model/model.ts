@@ -5,19 +5,28 @@ export class Model {
     model: mat4;
     position: vec3;
     eulers: vec3;
+    eulerSpeed: vec3;
     meshIndex: number = 0;
 
-    constructor(meshIndex: number, position: vec3, eulers: vec3) {
+    constructor(meshIndex: number, position: vec3, eulers: vec3, eulerSpeed?: vec3) {
         this.meshIndex = meshIndex;
         this.position = position;
         this.eulers = eulers;
+        this.eulerSpeed = eulerSpeed ? <vec3> eulerSpeed.valueOf() : [0, 0, 0];
         this.calculateTransform();
     }
 
     update(dt: number) {
-        const SPEED = 22.5;
-        this.eulers[1] += SPEED * dt;
-        if (this.eulers[1] > 360) this.eulers[1] -= 360;
+        let rotation: vec3 = vec3.mul(vec3.create(), this.eulerSpeed, [dt, dt, dt]);
+        vec3.add(this.eulers, this.eulers, rotation);
+
+        if (this.eulers[0] >  360) this.eulers[0] -= 360;
+        if (this.eulers[1] >  360) this.eulers[1] -= 360;
+        if (this.eulers[2] >  360) this.eulers[2] -= 360;
+        if (this.eulers[0] < -360) this.eulers[0] += 360;
+        if (this.eulers[1] < -360) this.eulers[1] += 360;
+        if (this.eulers[2] < -360) this.eulers[2] += 360;
+
         this.calculateTransform();
     }
 

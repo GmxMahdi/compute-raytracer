@@ -94,6 +94,10 @@ export class SceneRaytracing {
                     /*meshIndex*/x, 
                     /*position*/[5 * x, 0, 5 * z], 
                     /*eulers*/[180, 45 * x, 0]));
+
+        this.models[1].eulerSpeed = [0, 45, 0];
+
+        // Flat surface
         this.models.push(new Model(
             this.meshes.indexOf(flatMesh),
             [0, 0, 0],
