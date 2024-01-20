@@ -8,6 +8,7 @@ import { Model } from "./model/model";
 import { BLAS } from "./acceleration/blas";
 import urlMouseyObj from "../assets/models/mousey/mousey.obj?url";
 import urlCatObj from '../assets/models/cat.obj?url';
+import urlFlatObj from '../assets/models/flat.obj?url';
 import { Mode } from "fs";
 import { off } from "process";
 
@@ -53,7 +54,15 @@ export class SceneRaytracing {
             scale: 0.1
         });
 
-        this.meshes = [catMesh, mouseyMesh];
+        let flatMesh = new Mesh();
+        await flatMesh.initialize(urlFlatObj, {
+            color: [1.0, 1.0, 1.0, 1.0],
+            alignBottom: false,
+            invertYZ: false,
+            scale: 10
+        })
+
+        this.meshes = [catMesh, mouseyMesh, flatMesh];
 
 
         // Populate triangle array from our mesh
@@ -79,9 +88,17 @@ export class SceneRaytracing {
 
         // Initialize models
         this.models = [];
-        for (let z = 0; z < 2; ++z)
+        for (let z = 0; z < 1; ++z)
             for (let x = 0; x < 2; ++x)
-                this.models.push(new Model(x, [5 * x, 0, 5 * z], [180, 45 * x, 0]));
+                this.models.push(new Model(
+                    /*meshIndex*/x, 
+                    /*position*/[5 * x, 0, 5 * z], 
+                    /*eulers*/[180, 45 * x, 0]));
+        this.models.push(new Model(
+            this.meshes.indexOf(flatMesh),
+            [0, 0, 0],
+            [0, 0, 0]
+        ))
 
 
         this.tlasNodesMax = 2 * this.models.length - 1;
