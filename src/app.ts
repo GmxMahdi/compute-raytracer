@@ -61,6 +61,7 @@ export class App {
 
         // dat.GUI
         this.setupGUI();
+        document.getElementById('control-info').classList.remove('hide');
 
         // Other label sets
         this.primitiveCountLabel.innerText = this.scene.triangles.length.toString();
@@ -87,11 +88,28 @@ export class App {
 
         const lightPositionFolder = gui.addFolder('Light Position');
         lightPositionFolder.add(this.scene.light.position, '0', -10, 10).name('X');
-        lightPositionFolder.add(this.scene.light.position, '1', -10, 10).name('Y');
-        lightPositionFolder.add(this.scene.light.position, '1', -10, 10).name('Z');
+        lightPositionFolder.add(this.scene.light.position, '1', 0, 10).name('Y');
+        lightPositionFolder.add(this.scene.light.position, '2', -10, 10).name('Z');
+        lightPositionFolder.open();
 
         gui.add(this.scene.light, 'lightIntensity', 1.0, 10.0);
-        gui.add(this.scene.light, 'minIntensity', 0.0, 1.0)
+        gui.add(this.scene.light, 'minIntensity', 0.0, 1.0);
+
+        const catPositionFolder = gui.addFolder('Cat Position');
+        const catModel = this.scene.models[0];
+        catPositionFolder.add(catModel.position, '0', -10, 10).name('X').onChange(updateCatModel);
+        catPositionFolder.add(catModel.position, '2', -10, 10).name('Z').onChange(updateCatModel);
+        function updateCatModel() {
+            catModel.update(0);
+        }
+
+        const mouseyPositionFolder = gui.addFolder('Mousey Position');
+        const mouseyModel = this.scene.models[1];
+        mouseyPositionFolder.add(mouseyModel.position, '0', -10, 10).name('X').onChange(updateMouseyModel);
+        mouseyPositionFolder.add(mouseyModel.position, '2', -10, 10).name('Z').onChange(updateMouseyModel);
+        function updateMouseyModel() {
+            mouseyModel.update(0);
+        }
 
         document.getElementById('container').append(gui.domElement);
     }
