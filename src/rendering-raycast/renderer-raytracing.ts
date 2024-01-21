@@ -122,7 +122,7 @@ export class RendererRaytracing {
         });
 
         this.sceneParameters = this.device.createBuffer({
-            size: 64,
+            size: 96,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
         });
 
@@ -155,12 +155,13 @@ export class RendererRaytracing {
     private recalculateScene() {
         // Scene parameters
         const maxBounces: number = 4;
-        const sceneParametersData = new Float32Array(16);
+        const sceneParametersData = new Float32Array(24);
         sceneParametersData.set(this.scene.camera.position, 0);
         sceneParametersData.set(this.scene.camera.forwards, 4);
         sceneParametersData.set(this.scene.camera.right, 8);
         sceneParametersData.set(this.scene.camera.up, 12);
-        sceneParametersData.set([maxBounces], 15);
+        sceneParametersData.set(this.scene.light.position, 16);
+        sceneParametersData.set([this.scene.light.lightIntensity, this.scene.light.minIntensity, maxBounces], 19);
         this.device.queue.writeBuffer(this.sceneParameters, 0, sceneParametersData);
 
 

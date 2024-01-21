@@ -77,16 +77,22 @@ export class App {
             kernel: 'raytracer',
         };
         
-        const kernelController = gui.add(kernelSettings, 'kernel', [
+        gui.add(kernelSettings, 'kernel', [
             'raytracer',
             'heatmap',
-        ]);
-
-        kernelController.listen();
-        kernelController.onChange((kernel: string) => {
+        ]).onChange((kernel: string) => {
             if (kernel === 'raytracer') this.renderer.showRaytracer();
             if (kernel === 'heatmap') this.renderer.showHeatmap();
         })
+
+        const lightPositionFolder = gui.addFolder('Light Position');
+        lightPositionFolder.add(this.scene.light.position, '0', -10, 10).name('X');
+        lightPositionFolder.add(this.scene.light.position, '1', -10, 10).name('Y');
+        lightPositionFolder.add(this.scene.light.position, '1', -10, 10).name('Z');
+
+        gui.add(this.scene.light, 'lightIntensity', 1.0, 10.0);
+        gui.add(this.scene.light, 'minIntensity', 0.0, 1.0)
+
         document.getElementById('container').append(gui.domElement);
     }
 

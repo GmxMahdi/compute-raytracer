@@ -5,16 +5,16 @@ import { vec3 } from "gl-matrix";
 import { Triangle } from "./model/triangle";
 import { Mesh } from "./mesh";
 import { Model } from "./model/model";
+import { Light } from "./light";
 import { BLAS } from "./acceleration/blas";
 import urlMouseyObj from "../assets/models/mousey/mousey.obj?url";
+import urlFlatObj from "../assets/models/flat.obj?url";
 import urlCatObj from '../assets/models/cat.obj?url';
-import urlFlatObj from '../assets/models/flat.obj?url';
-import { Mode } from "fs";
-import { off } from "process";
-
 export class SceneRaytracing {
-    camera: Camera
+    camera: Camera;
 
+
+    light: Light;
     spheres: Sphere[];
     triangleIndices: number[];
     triangles: Triangle[];
@@ -37,6 +37,12 @@ export class SceneRaytracing {
     async createScene() {
         //this.camera = new Camera([-2.0, 0.0, 0.0], 90, 0);
         this.camera = new Camera([0.0593, 2.692, 3.293], 106, 270);
+        
+        this.light = {
+            position: [0, 5, 0],
+            lightIntensity: 3.0,
+            minIntensity: 0.3,
+        }
 
         let mouseyMesh = new Mesh();
         await mouseyMesh.initialize(urlMouseyObj, {
