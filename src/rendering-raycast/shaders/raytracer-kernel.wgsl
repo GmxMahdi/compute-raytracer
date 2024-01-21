@@ -67,6 +67,9 @@ struct RenderState {
 
 const STACK_SIZE: u32 = 20;
 
+const POINT_LIGHT: vec3<f32> = vec3<f32>(0, 5, 0);
+const MIN_INTENSITY: f32 = 0.5;
+
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     let screenSize: vec2<u32> = textureDimensions(colorBuffer);
@@ -86,7 +89,7 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3<u32>) {
     var result: vec4<f32> = rayColor(ray);
 
     var rayColor: vec3<f32> = result.rgb;
-    var skyboxColor: vec3<f32> = textureSampleLevel(skyTex, texSamp, ray.direction, 0.0).rgb;
+    var skyboxColor: vec3<f32> = textureSampleLevel(skyTex, texSamp, ray.direction, 0.0).rgb * MIN_INTENSITY;
 
     let MAX_DISTANCE: f32 = 30;
     var intensity = clamp((MAX_DISTANCE - result.w) / MAX_DISTANCE, 0, 1);
@@ -117,22 +120,53 @@ fn rayColor(ray: Ray) -> vec4<f32> {
        let nextSumFactor = affectFactor + sumFactor;
 
         if (!result.hit) {
-            color = (color * sumFactor + textureSampleLevel(skyTex, texSamp, worldRay.direction, 0.0).rgb * affectFactor) / nextSumFactor;
+            var skyboxColor: vec3<f32> = textureSampleLevel(skyTex, texSamp, worldRay.direction, 0.0).rgb * MIN_INTENSITY;
+            color = (color * sumFactor +  skyboxColor * affectFactor) / nextSumFactor;
             break;
         }
 
-        var diffuseColor: vec3<f32> = result.diffuse.rgb * result.diffuse.w;
-        var samplerColor: vec3<f32> = textureSampleLevel(meshTex, texSamp, result.texCoord, 0.0).rgb * (1 - result.diffuse.w);
-        color = (color * sumFactor + (diffuseColor + samplerColor) * affectFactor) / nextSumFactor;
-
-        affectFactor /= 2.0;
-        sumFactor = nextSumFactor;
-
+        // Get next position dans direction of the ray
         worldRay.origin = worldRay.origin + result.t * worldRay.direction;
         worldRay.direction = normalize(reflect(worldRay.direction, result.normal));
+
+        var intensity: f32 = lightIntensity(worldRay.origin, result.normal);
+        var diffuseColor: vec3<f32> = result.diffuse.rgb * result.diffuse.w;
+        var samplerColor: vec3<f32> = textureSampleLevel(meshTex, texSamp, result.texCoord, 0.0).rgb * (1 - result.diffuse.w);
+        var blendedColor: vec3<f32> = (diffuseColor + samplerColor) * intensity;
+        color = (color * sumFactor + blendedColor * affectFactor) / nextSumFactor;
+
+        // Update how much the next ray will affect the color
+        affectFactor /= 2.0;
+        sumFactor = nextSumFactor;
     }
 
     return vec4<f32>(color, dist);
+}
+
+fn lightIntensity(destination: vec3<f32>, normal: vec3<f32>) -> f32 {
+    var direction = normalize(destination - POINT_LIGHT);
+    var distance = length(direction);
+
+    var ray: Ray;
+    ray.origin = POINT_LIGHT;
+    ray.direction = direction;
+    var result: RenderState = traceTLAS(ray);  
+
+    if (result.hit) {
+        var hitPoint: vec3<f32> = POINT_LIGHT + result.t * direction;
+        var diff: f32 = length(hitPoint - destination);
+        var epsilon: f32 = 0.005;
+        if (diff < epsilon) {
+            var power: f32 = clamp(dot(normal, -direction), MIN_INTENSITY, 1.0);
+
+            var INTENSITY: f32 = 999.0;
+            var intensityCap: f32 = INTENSITY / (INTENSITY + distance);
+            return power* intensityCap;
+        }
+    }
+
+    const MIN_INTENSITY: f32 = 0.1;
+    return MIN_INTENSITY;
 }
 
 fn traceTLAS(ray: Ray) -> RenderState {

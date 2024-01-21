@@ -92,7 +92,7 @@ export class SceneRaytracing {
             for (let x = 0; x < 2; ++x)
                 this.models.push(new Model(
                     /*meshIndex*/x, 
-                    /*position*/[5 * x, 0, 5 * z], 
+                    /*position*/[5 * x -2.5, 0, 0], 
                     /*eulers*/[180, 45 * x, 0]));
 
         this.models[1].eulerSpeed = [0, 45, 0];
